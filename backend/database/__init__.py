@@ -2,6 +2,7 @@
     used by the APIs
 """
 
+from backend import settings
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
 
@@ -15,4 +16,4 @@ def initialize_db(app):
     app.app_context().push()
     db.init_app(app)
     from . import models
-    migrate.init_app(app, db)
+    migrate.init_app(app, db, directory=settings.MIGRATIONS_DIR)

@@ -1,8 +1,12 @@
 """ Contains the model definitions for the database """
 
 from backend.database import db
-from datetime import datetime
+from backend import settings
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timedelta
+import jwt
 from sqlalchemy.dialects.postgresql import UUID, JSON
+from sqlalchemy.ext.hybrid import hybrid_property
 import uuid
 
 
@@ -17,11 +21,62 @@ class BaseFieldsMixin:
 
 
 class User(db.Model, BaseFieldsMixin):
-    """ Represents the User instance for authentication """
+    """ Represents the User instance for authentication
+        
+        To create a new user:
+            user = User(**username_and_email)
+            user.password = password  # This hashes the password
+            db.session.add(user)
+            db.session.commit()
+
+        To verify an existing user's password
+            user.verify_password(password)
+    """
     __tablename__ = "users"
 
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
+    _password = db.Column(db.String(120))
+
+    @hybrid_property
+    def password(self):
+        return self._password
+
+    @password.setter
+    def password(self, plaintext):
+        self._password = generate_password_hash(plaintext)
+
+    def verify_password(self, plaintext):
+        return check_password_hash(self._password, plaintext)
+
+    def generate_jwt(self):
+        """ Generates and returns a JWT token with the user's details in the
+            payload
+        """
+        payload = {
+            "uuid": str(self.id),
+            "username": self.username,
+            "email": self.email,
+            # Used internally by jwt.encode for timeout; disabled by
+            # `options.verify_exp`
+            "exp": datetime.utcnow()+timedelta(seconds=settings.JWT_TIMEOUT)
+        }
+        return jwt.encode(payload, settings.SECRET_KEY, algorithm="HS256")
+
+    @classmethod
+    def validate_jwt(cls, token):
+        """ Validates that the token refers to a user that exists in the db """
+        try:
+            decoded = jwt.decode(token.strip(), settings.SECRET_KEY, algorithm="HS256")
+            if "uuid" not in decoded:
+                raise jwt.exceptions.DecodeError("`UUID` not in segment")
+            user = User.query.filter_by(id=decoded["uuid"]).first()
+            if not user:
+                raise jwt.exceptions.DecodeError("User doesn't exist")
+            return user
+        except jwt.exceptions.DecodeError:
+            return None
+        return None
 
 
 class Bot(db.Model, BaseFieldsMixin):

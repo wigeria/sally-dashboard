@@ -4,6 +4,9 @@ import os
 import sys
 
 
+PROJECT_DIR = os.path.dirname(os.path.dirname(__file__))
+MIGRATIONS_DIR = os.path.join(PROJECT_DIR, "migrations")
+
 # Deployment Settings
 DEBUG = os.environ.get("DEBUG", "False") == "True"
 HOST = os.environ.get("HOST", "localhost")
@@ -13,3 +16,7 @@ PORT = sys.argv[-1] if sys.argv[-1].isdigit() else \
 # Database Settings
 TEST_DATABASE_URI = os.environ["TEST_DATABASE_URI"]
 DATABASE_URI = os.environ["DATABASE_URI"]
+
+# Auth Settings
+SECRET_KEY = os.environ.get("SECRET_KEY", "secret-key")
+JWT_TIMEOUT = 3600
