@@ -114,4 +114,24 @@ Response:
 
 ### Start Jobs
 
---- TBD
+URL: `/api/bots/`
+
+Method: `POST`
+
+Request Body:
+```json
+    {
+        "bot_id": "Bot UUID",
+        "payload": {
+            "template_variable": "values"
+        }
+    }
+```
+
+Response:
+```json
+    {
+        "job_id": "UUID",
+        "status": "Running"
+    }
+```

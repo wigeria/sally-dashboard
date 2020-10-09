@@ -1,16 +1,14 @@
 """ Module containing all of the test fixtures and configuration """
 
 import backend
-from backend.database.models import User
 import pytest
+import os
 
 
 @pytest.fixture(scope="session")
 def client():
-    app = backend.create_app(test_config={
-        "SQLALCHEMY_DATABASE_URI": backend.settings.TEST_DATABASE_URI,
-        "SQLALCHEMY_TRACK_MODIFICATIONS": False
-    })
+    os.environ["TEST"] = "True"
+    app = backend.create_app()
 
     with app.test_client() as client:
         yield client
@@ -20,12 +18,17 @@ def client():
 def db(client):
     """ Fixture for the DB attached to the current session """
     from backend.database import db
+    from backend.database.models import User, Bot, Job
+    User.query.delete()
+    Bot.query.delete()
+    Job.query.delete()
     yield db
 
 
 @pytest.fixture(scope="session")
 def user(client, db):
     """ Fixture for a user in the current session's db """
+    from backend.database.models import User
     u = User(email="test@email.com", username="testuser")
     u.password = "testpass"
     db.session.add(u)

@@ -1,0 +1,5 @@
+title: Test Bot
+steps:
+  - title: Step 1
+    action: navigate
+    url: 'http://google.com'

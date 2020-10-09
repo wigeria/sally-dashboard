@@ -22,3 +22,5 @@ Sally Dashboard is a UI for creating, managing and running [SeleniumYAML](https:
 2. Implement support for custom plugins during deployment
 
 3. Implement support for chained bots (modularized bots with sub-bot calls)
+
+4. Change Selenium-yaml's yaml loader to use a `Loader=...` arg; https://msg.pyyaml.org/load

@@ -20,7 +20,7 @@ class ListResourceMixin:
         ``get`` - Returns all instances of the ``model_class`` serialized using
             the ``serializer_class``
     """
-    def get(self):
+    def get(self, *args, **kwargs):
         """ Handler for the GET request """
         assert getattr(self, "model_class", None) is not None
         assert getattr(self, "serializer_class", None) is not None

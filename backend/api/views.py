@@ -5,10 +5,16 @@ from .decorators import is_authenticated
 from .mixins import ListResourceMixin, CreateResourceMixin
 from .request_schemas import UserLoginRequestSchema
 from .serializers import BotsSchema
+from backend.database import db
 from backend.database.models import Bot, User
-from flask import request, jsonify, make_response
-from flask_restful import Resource
+from backend.utils import bot_utils
+from flask import request, jsonify, make_response, escape
+from flask_restful import Resource, reqparse
 from marshmallow import ValidationError
+import selenium_yaml
+import sqlalchemy
+from tasks import jobs
+import werkzeug
 
 
 class TestResource(Resource):
@@ -51,6 +57,96 @@ class LoginResource(Resource):
 api.add_resource(LoginResource, "/login/")
 
 
-class BotsResource(Resource, ListResourceMixin, CreateResourceMixin):
+class BotsListCreateResource(Resource, ListResourceMixin):
     model_class = Bot
     serializer_class = BotsSchema
+    method_decorators = [is_authenticated]
+
+    def post(self, user=None):
+        """ Creates a Bot instance by first validating the provided file
+            and then uploading it to S3
+        """
+        if "file" not in request.files or "name" not in request.form:
+            return make_response(jsonify({
+                "errors": "Missing file/name"
+            }), 400)
+        if len(request.form["name"]) > 80:
+            return make_response(jsonify({
+                "errors": "``name`` <= 80"
+            }), 400)
+        yaml_content = request.files["file"].read()
+        try:
+            bot_utils.parse_yaml_bot(yaml_content)
+        except selenium_yaml.exceptions.ValidationError as err:
+            return make_response(jsonify({
+                "errors": err.error
+            }), 400)
+        except AssertionError as err:
+            return make_response(jsonify({
+                "errors": {"assertion": err.args[0]}
+            }), 400)
+
+        bot = Bot(name=escape(request.form["name"]))
+        db.session.add(bot)
+        db.session.commit()
+        bot_utils.upload_bot(yaml_content, bot.s3_path)
+        return make_response(jsonify({
+            "id": str(bot.id),
+            "name": bot.name
+        }), 201)
+api.add_resource(BotsListCreateResource, "/bots/")
+
+
+class BotsDeleteResource(Resource):
+    """ Resource implementing endpoints for deleting Bots """
+    method_decorators = [is_authenticated]
+
+    def delete(self, bot_id, user=None):
+        """ Deletes the given Bot as well as it's file from S3 """
+        bot = Bot.query.filter(Bot.id == bot_id).first()
+        if not bot:
+            return make_response(jsonify({
+                "error": "Does Not Exist"
+            }), 404)
+        bot_utils.delete_bot(bot.s3_path)
+        db.session.delete(bot)
+        db.session.commit()
+        return make_response(jsonify({
+            "message": "Deleted"
+        }), 200)
+api.add_resource(BotsDeleteResource, "/bots/<string:bot_id>/")
+
+
+class JobsListCreateResource(Resource):
+    """ Resource for listing/creating new jobs """
+    method_decorators = [is_authenticated]
+
+    def post(self, user=None):
+        """ Creates and starts a new job against a given bot """
+        data = request.get_json()
+        if "bot_id" not in data or "runtime_data" not in data or not \
+                isinstance(data["runtime_data"], dict):
+            return make_response(jsonify({
+                "error": "Invalid Data"
+            }), 400)
+
+        bot_id = data["bot_id"]
+        try:
+            bot = Bot.query.filter(Bot.id == bot_id).first()
+        except sqlalchemy.exc.DataError:
+            db.session.rollback()
+            bot = None
+        if not bot:
+            return make_response(jsonify({
+                "error": "Bot Does Not Exist"
+            }), 404)
+
+        jobs.run_bot.send({
+            "id": str(bot.id),
+            "name": bot.name,
+            "s3_path": bot.s3_path
+        }, data["runtime_data"])
+        return make_response(jsonify({
+            "job_id": "..."
+        }))
+api.add_resource(JobsListCreateResource, "/jobs/")

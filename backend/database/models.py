@@ -67,7 +67,7 @@ class User(db.Model, BaseFieldsMixin):
     def validate_jwt(cls, token):
         """ Validates that the token refers to a user that exists in the db """
         try:
-            decoded = jwt.decode(token.strip(), settings.SECRET_KEY, algorithm="HS256")
+            decoded = jwt.decode(token.strip(), settings.SECRET_KEY, algorithms="HS256")
             if "uuid" not in decoded:
                 raise jwt.exceptions.DecodeError("`UUID` not in segment")
             user = User.query.filter_by(id=decoded["uuid"]).first()
@@ -97,7 +97,7 @@ class Job(db.Model, BaseFieldsMixin):
     start_time = db.Column(db.DateTime, nullable=False)
     finish_time = db.Column(db.DateTime, nullable=True)
     logs = db.Column(db.Text)
-    runtime_date = db.Column(JSON)
+    runtime_data = db.Column(JSON)
 
     bot_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey(Bot.id), nullable=False)
