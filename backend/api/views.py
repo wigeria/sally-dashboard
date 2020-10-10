@@ -4,15 +4,18 @@ from . import api
 from .decorators import is_authenticated
 from .mixins import ListResourceMixin, CreateResourceMixin
 from .request_schemas import UserLoginRequestSchema
-from .serializers import BotsSchema
+from .serializers import BotsSchema, JobsSchema
 from backend.database import db
-from backend.database.models import Bot, User
+from backend.database.models import Bot, User, Job
 from backend.utils import bot_utils
+from datetime import datetime
 from flask import request, jsonify, make_response, escape
 from flask_restful import Resource, reqparse
+import json
 from marshmallow import ValidationError
 import selenium_yaml
 import sqlalchemy
+from sqlalchemy.orm import joinedload
 from tasks import jobs
 import werkzeug
 
@@ -117,9 +120,22 @@ class BotsDeleteResource(Resource):
 api.add_resource(BotsDeleteResource, "/bots/<string:bot_id>/")
 
 
-class JobsListCreateResource(Resource):
+class JobsListCreateResource(ListResourceMixin, Resource):
     """ Resource for listing/creating new jobs """
     method_decorators = [is_authenticated]
+    model_class = Job
+    serializer_class = JobsSchema
+
+    def get_queryset(self):
+        """ Overwritten to add support for filtering by status """
+        filters = []
+        status = request.args.get("status", None)
+        if status == "0":
+            filters.append(Job.finish_time == None)
+        elif status == "1":
+            filters.append(Job.finish_time != None)
+        return self.model_class.query.filter(*filters) \
+            .options(joinedload(Job.bot))
 
     def post(self, user=None):
         """ Creates and starts a new job against a given bot """
@@ -141,12 +157,23 @@ class JobsListCreateResource(Resource):
                 "error": "Bot Does Not Exist"
             }), 404)
 
+        job = Job(
+            start_time=datetime.utcnow(),
+            runtime_data=json.dumps(data["runtime_data"]),
+            bot_id=bot.id)
+        db.session.commit()
         jobs.run_bot.send({
-            "id": str(bot.id),
+            "id": str(job.id),
+            "bot_id": str(bot.id),
             "name": bot.name,
             "s3_path": bot.s3_path
         }, data["runtime_data"])
         return make_response(jsonify({
-            "job_id": "..."
+            "id": str(job.id),
+            "bot": {
+                "id": str(bot.id),
+                "name": str(bot.name)
+            },
+            "runtime_data": data["runtime_data"]
         }))
 api.add_resource(JobsListCreateResource, "/jobs/")

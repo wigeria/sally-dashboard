@@ -111,4 +111,3 @@ class Job(db.Model, BaseFieldsMixin):
         if self.finish_time is None:
             return 0
         return 1
-    

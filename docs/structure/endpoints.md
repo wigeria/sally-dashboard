@@ -135,3 +135,25 @@ Response:
         "status": "Running"
     }
 ```
+
+### List Jobs
+
+URL: `/api/bots/`
+
+Method: `POST`
+
+Parameters
+
+- `status` - 0: Running Jobs, 1: Finished Jobs
+
+Response:
+```json
+    {
+        "job_id": "UUID",
+        "start_time": "",
+        "finish_time": "",
+        "runtime_data": "",
+        "logs": "",
+        "bot": {}
+    }
+```

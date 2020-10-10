@@ -1,2 +1,0 @@
-dramatiq[redis,watch]
-selenium_yaml==1.0.3

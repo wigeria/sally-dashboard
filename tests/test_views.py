@@ -1,7 +1,8 @@
 """ Contains tests for the views declared in the Backend.app instance """
 
-from backend.database.models import Bot
+from backend.database.models import Bot, Job
 from backend.utils import bot_utils
+from datetime import datetime
 from io import BytesIO
 
 
@@ -148,5 +149,37 @@ def test_job_start(client, db, user):
     assert r.status_code == 200
 
     # bot_utils.delete_bot(bot.s3_path)
+    Job.query.delete()
     db.session.delete(bot)
     db.session.commit()
+
+
+def test_jobs_list(client, db, user):
+    """ Tests that the list of jobs can be retrieved through a status
+        filter
+    """
+    bot = Bot(name="TestBot")
+    running_job = Job(bot=bot, start_time=datetime.utcnow())
+    finished_job = Job(
+        bot=bot, start_time=datetime.utcnow(),
+        finish_time=datetime.utcnow())
+    bot.jobs = [running_job, finished_job]
+    db.session.add(bot)
+    db.session.commit()
+
+    url = "/api/jobs/"
+    headers = {"Authorization": f"Token {user.generate_jwt().decode()}"}
+
+    # Unauthenticated request; 401
+    r = client.get(url)
+    assert r.status_code == 401
+
+    # All jobs; 2 jobs returned
+    r = client.get(url, headers=headers)
+    assert r.status_code == 200
+    assert len(r.json) == 2
+
+    # Running jobs; 1 job returned
+    r = client.get(url+"?status=0", headers=headers)
+    assert r.status_code == 200
+    assert len(r.json) == 1

@@ -7,6 +7,7 @@ import os
 
 @pytest.fixture(scope="session")
 def client():
+    from backend.database import subscription_thread
     os.environ["TEST"] = "True"
     app = backend.create_app()
 
@@ -20,8 +21,8 @@ def db(client):
     from backend.database import db
     from backend.database.models import User, Bot, Job
     User.query.delete()
-    Bot.query.delete()
     Job.query.delete()
+    Bot.query.delete()
     yield db
 
 
