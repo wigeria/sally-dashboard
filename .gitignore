@@ -129,4 +129,6 @@ dmypy.json
 .pyre/
 
 # Flask-Migrate Migrations
+migrations/
 backend/migrations/
+backend/test_migrations/

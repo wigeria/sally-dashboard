@@ -4,6 +4,13 @@
 
 Sally Dashboard is a UI for creating, managing and running [SeleniumYAML](https://wigeria.github.io/selenium-yaml-core/) bots. This documentation aims to make it's structure and deployment process as clear as possible.
 
+## Commands
+
+- `flask db history --directory=backend/migrations` - Get migrations history
+- `flask run` - Run flask app
+- `pytest tests` - Run flask tests
+- `mkdocs serve` - Serve the documentation
+
 ## Contents
 
 1. [Outline](structure/outline.md)
@@ -15,3 +22,5 @@ Sally Dashboard is a UI for creating, managing and running [SeleniumYAML](https:
 2. Implement support for custom plugins during deployment
 
 3. Implement support for chained bots (modularized bots with sub-bot calls)
+
+4. Change Selenium-yaml's yaml loader to use a `Loader=...` arg; https://msg.pyyaml.org/load

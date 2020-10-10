@@ -13,6 +13,8 @@ The project is based around three major components.
 
 The backend is built using Python 3 with the Flask framework. It revolves around using a PostgreSQL database for storing relational Bot data and a Redis database for acting as a message broker and task queue through the [Dramatiq](https://dramatiq.io/) Task Processing library.
 
+The backend and the tasks queue/worker(s) will be in a single container running in separate processes. Perhaps use supervisor for this.
+
 ### File Structure
 
 ```
