@@ -7,8 +7,6 @@ from backend.database import initialize_db, db
 from backend.api import initialize_api
 import os
 import backend.settings
-from dramatiq.brokers.redis import RedisBroker
-import redis
 import sys
 
 
@@ -25,22 +23,23 @@ def create_app():
     test_config = None
     if os.environ.get("TEST", "false") == "True":
         test_config = TEST_CONFIG
-
-    app.config["DRAMATIQ_BROKER"] = RedisBroker
     if test_config is None:
         app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
         app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        app.config["REDIS_CONF"] = settings.REDIS_CONF
-        app.config["DRAMATIQ_BROKER_URL"] = \
-            f"redis://{settings.REDIS_CONF['host']}:{settings.REDIS_CONF['port']}"
     else:
         app.config.from_mapping(test_config)
-        app.config["REDIS_CONF"] = settings.TEST_REDIS_CONF
-        app.config["DRAMATIQ_BROKER_URL"] = \
-            f"redis://{settings.TEST_REDIS_CONF['host']}:" + \
-            f"{settings.TEST_REDIS_CONF['port']}"
 
     initialize_db(app)
     initialize_api(app)
+
+    @app.after_request
+    def after_request(response):
+        """ Adding CORS headers into response """
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add(
+            'Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        response.headers.add(
+            'Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE')
+        return response
 
     return app

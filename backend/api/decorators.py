@@ -3,6 +3,7 @@
 from backend.database.models import User
 from flask import request
 from functools import wraps
+import jwt
 
 
 def is_authenticated(func):
@@ -17,7 +18,10 @@ def is_authenticated(func):
         token = header.split(prefix)[-1].strip()
         if not token:
             return error
-        user = User.validate_jwt(token)
+        try:
+            user = User.validate_jwt(token)
+        except jwt.exceptions.ExpiredSignatureError:
+            return error
         if user:
             return func(*args, user=user, **kwargs)
         return error

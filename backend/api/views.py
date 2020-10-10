@@ -73,7 +73,7 @@ class BotsListCreateResource(Resource, ListResourceMixin):
             return make_response(jsonify({
                 "errors": "Missing file/name"
             }), 400)
-        if len(request.form["name"]) > 80:
+        if len(request.form["name"]) > 80 or len(request.form["name"]) < 1:
             return make_response(jsonify({
                 "errors": "``name`` <= 80"
             }), 400)
@@ -112,6 +112,7 @@ class BotsDeleteResource(Resource):
                 "error": "Does Not Exist"
             }), 404)
         bot_utils.delete_bot(bot.s3_path)
+        Job.query.filter(Job.bot_id == bot.id).delete()
         db.session.delete(bot)
         db.session.commit()
         return make_response(jsonify({
@@ -161,6 +162,7 @@ class JobsListCreateResource(ListResourceMixin, Resource):
             start_time=datetime.utcnow(),
             runtime_data=json.dumps(data["runtime_data"]),
             bot_id=bot.id)
+        db.session.add(job)
         db.session.commit()
         jobs.run_bot.send({
             "id": str(job.id),
@@ -168,12 +170,23 @@ class JobsListCreateResource(ListResourceMixin, Resource):
             "name": bot.name,
             "s3_path": bot.s3_path
         }, data["runtime_data"])
-        return make_response(jsonify({
-            "id": str(job.id),
-            "bot": {
-                "id": str(bot.id),
-                "name": str(bot.name)
-            },
-            "runtime_data": data["runtime_data"]
-        }))
+        schema = self.serializer_class()
+        return make_response(jsonify(schema.dump(job)), 201)
 api.add_resource(JobsListCreateResource, "/jobs/")
+
+
+class JobsDetailResource(Resource):
+    """ Resource implementing endpoints for get a single Job's Details """
+    method_decorators = [is_authenticated]
+    serializer_class = JobsSchema
+
+    def get(self, job_id, user=None):
+        """ Returns details for the given job """
+        job = Job.query.filter(Job.id == job_id).first()
+        if not job:
+            return make_response(jsonify({
+                "error": "Does Not Exist"
+            }), 404)
+        schema = self.serializer_class()
+        return make_response(jsonify(schema.dump(job)), 200)
+api.add_resource(JobsDetailResource, "/jobs/<string:job_id>/")

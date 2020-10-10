@@ -15,6 +15,10 @@ The backend is built using Python 3 with the Flask framework. It revolves around
 
 The backend and the tasks queue/worker(s) will be in a single container running in separate processes. Perhaps use supervisor for this.
 
+The business model would be to serve this dashboard as a standalone set of docker-compose managed images, and after implementing a system for upload "plugins" (identified as python packages), create a dashboard for selling those plugins and other services such as hosting etc.
+
+**Note: For Docker; use `host.docker.internal` for windows Postgres DB, and `--net=host` combined with `127.0.0.1` for DB Host for unix**
+
 ### File Structure
 
 ```

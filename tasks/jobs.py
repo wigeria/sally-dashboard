@@ -2,9 +2,10 @@
 
 from backend import settings
 from backend.utils import bot_utils
-from comm import redis_handler
 from contextlib import redirect_stdout
+from datetime import datetime
 import io
+import json
 import logging
 import os
 from selenium import webdriver
@@ -15,10 +16,6 @@ from . import dramatiq, settings
 
 
 os.environ["MOZ_HEADLESS"] = "1"
-if os.environ.get("TEST", "False") == "True":
-    REDIS_CONF = settings.TEST_REDIS_CONF
-else:
-    REDIS_CONF = settings.REDIS_CONF
 
 
 class InterceptionHandler(logging.Handler):
@@ -35,7 +32,6 @@ def get_driver():
     """ Returns the driver used for running the bots """
     driver = webdriver.Firefox()
     return driver
-
 
 @dramatiq.actor(max_retries=0)
 def run_bot(job_details, runtime_data):
@@ -57,6 +53,9 @@ def run_bot(job_details, runtime_data):
     """
     # This is all imported inside the worker to keep the logs in
     # separate file-objects per task
+    from backend import create_app
+    from backend.database import db
+    from backend.database.models import Job
     import selenium_yaml
     from loguru import logger
 
@@ -82,10 +81,14 @@ def run_bot(job_details, runtime_data):
 
     # Log file now contains all of the logs sent through loguru in the engine
     log_file.seek(0)
-    # TODO: Publish success response to redis for ``job_id`` with logs
-    channel = redis_handler.CHANNELS["completed_job"]
-    r = redis.Redis(**REDIS_CONF)
-    r.publish(channel, json.dumps({
-        "id": job_id,
-        "logs": log_file.getvalue()
-    }))
+    app = create_app()
+    db.init_app(app)
+    with app.app_context():
+        job = Job.query.filter(Job.id == job_id).first()
+        if not job:
+            raise ValueError(
+                f"Received completion for job that doesn't exist; `{message}`")
+
+        job.finish_time = datetime.utcnow()
+        job.logs = log_file.getvalue()
+        db.session.commit()

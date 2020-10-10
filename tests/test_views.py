@@ -146,9 +146,9 @@ def test_job_start(client, db, user):
     # Valid bot-id + auth; 200
     r = client.post(url, json={"bot_id": str(bot.id), "runtime_data": {}},
                     headers=headers)
-    assert r.status_code == 200
+    assert r.status_code == 201
 
-    # bot_utils.delete_bot(bot.s3_path)
+    bot_utils.delete_bot(bot.s3_path)
     Job.query.delete()
     db.session.delete(bot)
     db.session.commit()
