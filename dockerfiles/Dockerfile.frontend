@@ -1,0 +1,15 @@
+FROM node:14.13.1-buster-slim
+
+
+RUN apt-get update && apt-get upgrade -y
+
+RUN mkdir /frontend
+COPY ./frontend /frontend
+COPY ./scripts /scripts
+WORKDIR /frontend
+
+RUN npm install
+
+RUN sed -i 's/\r$//' /scripts/run_frontend.sh  && chmod +x /scripts/run_frontend.sh
+
+CMD ["/scripts/run_frontend.sh"]

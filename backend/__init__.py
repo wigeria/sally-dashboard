@@ -36,8 +36,8 @@ def create_app():
 
 
 if __name__ == "__main__":
-    from backend import api
+    from backend import api, settings
     from flask_socketio import SocketIO
 
     app = create_app()
-    api.socketio.run(app)
+    api.socketio.run(app, host=settings.HOST, port=int(settings.PORT))
