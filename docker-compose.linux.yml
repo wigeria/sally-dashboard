@@ -1,0 +1,41 @@
+# Use as docker-compose --env-file .env up
+version: "3.8"
+services:
+  redis_db:
+    image: redis
+    network_mode: host
+  backend:
+    network_mode: host
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.backend
+    command: /scripts/run_backend.sh
+    volumes:
+      - ./backend:/code/backend
+      - ./docs:/code/docs
+      - ./migrations:/code/migrations
+      - ./tasks:/code/tasks
+      - ./tests:/code/tests
+      - ./requirements/backend.txt:/code/requirements.txt
+      - ./scripts:/scripts
+      - ./mkdocs.yml:/code/mkdocs.yml
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    depends_on:
+      - redis_db
+  frontend:
+    depends_on:
+      - backend
+    build:
+      context: .
+      dockerfile: ./dockerfiles/Dockerfile.frontend
+    volumes:
+      - ./scripts:/scripts
+      - ./frontend:/frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+
