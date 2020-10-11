@@ -10,6 +10,7 @@ Sally Dashboard is a UI for creating, managing and running [SeleniumYAML](https:
 - `flask run` - Run flask app
 - `pytest tests` - Run flask tests
 - `mkdocs serve` - Serve the documentation
+- `python -m backend.__init__` - Start server via socketio
 
 ## Contents
 

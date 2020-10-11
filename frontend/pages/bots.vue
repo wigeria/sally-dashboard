@@ -80,6 +80,7 @@ export default {
     deleteBot (bot) {
       const url = '/api/bots/' + bot.id + '/'
       this.$api.delete(url).then((r) => {
+        this.$store.commit('addNotification', { notif: `Bot ${bot.name} Deleted` })
         this.bots.splice(this.bots.indexOf(bot), 1)
       }).catch((error) => {
         this.$store.commit('setError', error.response.statusText)
@@ -94,6 +95,7 @@ export default {
       this.showJobStartDialog = false
     },
     botCreated (bot) {
+      this.$store.commit('addNotification', { notif: `Bot ${bot.name} Created` })
       this.bots.push(bot)
     }
   }

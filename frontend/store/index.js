@@ -1,6 +1,7 @@
 export const state = () => ({
   userToken: localStorage.getItem('userToken') || null,
-  snackbarError: null
+  snackbarError: null,
+  notification: null
 })
 
 export const mutations = {
@@ -13,5 +14,11 @@ export const mutations = {
   },
   setError (state, error) {
     state.snackbarError = error
+  },
+  addNotification (state, { notif, to }) {
+    state.notification = {
+      text: notif,
+      to
+    }
   }
 }

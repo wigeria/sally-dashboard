@@ -1,14 +1,14 @@
 """ Contains Dramatiq actors for the Bot runs (jobs) """
 
-from backend import settings
-from backend.utils import bot_utils
 from contextlib import redirect_stdout
 from datetime import datetime
 import io
 import json
+from flask import Flask
 import logging
 import os
 from selenium import webdriver
+import socketio
 import time
 # Note that this is loading __init__, which is causing the broker to be set
 # properly
@@ -18,13 +18,23 @@ from . import dramatiq, settings
 os.environ["MOZ_HEADLESS"] = "1"
 
 
+def emit_job_message(socket, message):
+    """ General handler for emitting any messages to the socket """
+    socket.emit(
+        'job_update',
+        message,
+        namespace='/'
+    )
+
 class InterceptionHandler(logging.Handler):
-    def __init__(self, *args, job_id=None, **kwargs):
+    def __init__(self, *args, job_id=None, socket=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.job_id = job_id
+        self.socket = socket
 
     def emit(self, record):
         message = record.getMessage()
+        emit_job_message(self.socket, {"id": self.job_id, "log": message})
         # TODO: Publish message to `job_id` channel in the broker
 
 
@@ -53,7 +63,7 @@ def run_bot(job_details, runtime_data):
     """
     # This is all imported inside the worker to keep the logs in
     # separate file-objects per task
-    from backend import create_app
+    from backend.utils import bot_utils
     from backend.database import db
     from backend.database.models import Job
     import selenium_yaml
@@ -62,10 +72,13 @@ def run_bot(job_details, runtime_data):
     job_id = job_details["id"]
     bot_id = job_details["bot_id"]
     s3_path = job_details["s3_path"]
+    sio = socketio.Client()
+    sio.connect(
+        settings.WS_URL+f"?secret={settings.WS_SECRET}", namespaces=["/jobs"])
 
     log_file = io.StringIO()
     logger.add(log_file)
-    logger.add(InterceptionHandler(job_id=job_id))
+    logger.add(InterceptionHandler(job_id=job_id, socket=sio))
 
     content = bot_utils.download_bot(s3_path)
     print(f"RUNNING: {bot_id}, {content}")
@@ -81,7 +94,19 @@ def run_bot(job_details, runtime_data):
 
     # Log file now contains all of the logs sent through loguru in the engine
     log_file.seek(0)
-    app = create_app()
+    finish_time = datetime.utcnow()
+
+    emit_job_message(
+        sio,
+        {
+            "id": job_id,
+            "log": "-- Finished --",
+            "finish_time": finish_time.isoformat()
+        })
+
+    app = Flask(__name__)
+    app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     db.init_app(app)
     with app.app_context():
         job = Job.query.filter(Job.id == job_id).first()
@@ -89,6 +114,7 @@ def run_bot(job_details, runtime_data):
             raise ValueError(
                 f"Received completion for job that doesn't exist; `{message}`")
 
-        job.finish_time = datetime.utcnow()
+        job.finish_time = finish_time
         job.logs = log_file.getvalue()
         db.session.commit()
+    sio.disconnect()

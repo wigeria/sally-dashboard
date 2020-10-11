@@ -8,6 +8,13 @@ export default {
   publicRuntimeConfig: {
     axios: {
       baseURL: process.env.BASE_URL
+    },
+    // Nuxt-socket-io Sockets
+    io: {
+      sockets: [{
+        name: 'jobs',
+        url: process.env.BASE_URL
+      }]
     }
   },
 
@@ -47,7 +54,8 @@ export default {
 
   // Modules (https://go.nuxtjs.dev/config-modules)
   modules: [
-    '@nuxtjs/axios'
+    '@nuxtjs/axios',
+    'nuxt-socket-io'
   ],
 
   // Vuetify module configuration (https://go.nuxtjs.dev/config-vuetify)

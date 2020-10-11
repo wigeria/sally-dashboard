@@ -5,9 +5,11 @@ import pytest
 import os
 
 
+os.environ["TEST"] = "True"
+
+
 @pytest.fixture(scope="session")
 def client():
-    from backend.database import subscription_thread
     os.environ["TEST"] = "True"
     app = backend.create_app()
 

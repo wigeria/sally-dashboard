@@ -54,6 +54,20 @@ export default {
       }).catch((error) => {
         this.$store.commit('setError', error.response.statusText)
       })
+    },
+    setSocketHandler () {
+      const handler = (data) => {
+        if (this.job !== null && data.id === this.job.id) {
+          console.log(data, this.job)
+          if (data.log) {
+            this.job.logs += '\n' + data.log
+          }
+          if (data.finish_time) {
+            setTimeout(() => { this.getJobDetails() }, 4000)
+          }
+        }
+      }
+      this.$nuxt.$on('job_update_notification', handler)
     }
   },
   created () {
@@ -62,6 +76,10 @@ export default {
       return
     }
     this.getJobDetails()
+    this.setSocketHandler()
+  },
+  beforeDestroy () {
+    this.$nuxt.$off('job_update_notification')
   }
 }
 </script>

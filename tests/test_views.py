@@ -158,7 +158,7 @@ def test_jobs_list(client, db, user):
     """ Tests that the list of jobs can be retrieved through a status
         filter
     """
-    bot = Bot(name="TestBot")
+    bot = Bot(name="TestBot - List")
     running_job = Job(bot=bot, start_time=datetime.utcnow())
     finished_job = Job(
         bot=bot, start_time=datetime.utcnow(),
@@ -183,3 +183,29 @@ def test_jobs_list(client, db, user):
     r = client.get(url+"?status=0", headers=headers)
     assert r.status_code == 200
     assert len(r.json) == 1
+    Job.query.delete()
+    Bot.query.delete()
+    db.session.commit()
+
+
+def test_jobs_retrieve(client, db, user):
+    """ Tests that job details can be retrieved """
+    bot = Bot(name="TestBot - Retrieve")
+    job = Job(bot=bot, start_time=datetime.utcnow())
+    bot.jobs = [job]
+    db.session.add(bot)
+    db.session.commit()
+
+    url = f"/api/jobs/{str(job.id)}/"
+    headers = {"Authorization": f"Token {user.generate_jwt().decode()}"}
+
+    # Unauthenticated request; 401
+    r = client.get(url)
+    assert r.status_code == 401
+
+    # Authorized with valid job id; 200
+    r = client.get(url, headers=headers)
+
+    Job.query.delete()
+    db.session.delete(bot)
+    db.session.commit()

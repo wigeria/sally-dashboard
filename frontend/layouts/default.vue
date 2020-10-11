@@ -77,15 +77,18 @@
       :key="error.id"
       @closed="closeError(error)"
     ></error-snackbar>
+    <notifications-snackbar></notifications-snackbar>
   </v-app>
 </template>
 
 <script>
 
 import ErrorSnackbar from '@/components/ErrorSnackbar'
+import NotificationsSnackbar from '@/components/NotificationsSnackbar'
 
+console.log(NotificationsSnackbar)
 export default {
-  components: { ErrorSnackbar },
+  components: { ErrorSnackbar, NotificationsSnackbar },
   data () {
     return {
       drawer: true,
@@ -98,7 +101,8 @@ export default {
       ],
       errors: [],
       miniVariant: false,
-      title: 'Sally'
+      title: 'Sally',
+      socket: null
     }
   },
   computed: {
@@ -119,6 +123,35 @@ export default {
   methods: {
     closeError (error) {
       this.errors.splice(this.errors.indexOf(error), 1)
+    },
+    connectSocket () {
+      this.socket = this.$nuxtSocket({
+        channel: '/',
+        transports: ['websocket'],
+        query: {
+          token: this.$store.state.userToken
+        }
+      })
+      // Global event handling; use .on('*', (event, data) => {})
+      const onevent = this.socket.onevent
+      this.socket.onevent = function (packet) {
+        const args = packet.data || []
+        onevent.call(this, packet)
+        packet.data = ['*'].concat(args)
+        onevent.call(this, packet)
+      }
+      this.socket.on('connect', () => {
+        console.log('Socket Connected')
+      })
+      this.socket.on('job_update_notification', (data) => {
+        this.$nuxt.$emit('job_update_notification', data)
+        setTimeout(() => {
+          this.$store.commit('addNotification', {
+            notif: `Job ${data.id} has finished`,
+            to: `/jobs/${data.id}`
+          })
+        }, 4000)
+      })
     }
   },
   watch: {
@@ -130,6 +163,18 @@ export default {
         })
       }
       this.$store.commit('setError', null)
+    },
+    signedIn (newValue) {
+      if (newValue) {
+        this.connectSocket()
+      } else if (this.socket !== null) {
+        this.socket.disconnect(true)
+      }
+    }
+  },
+  created () {
+    if (this.signedIn && this.socket === null) {
+      this.connectSocket()
     }
   }
 }

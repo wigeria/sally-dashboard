@@ -57,6 +57,9 @@ export default {
       this.$api.post(url, this.formdata).then((r) => {
         this.dialogOpen = false
         this.runtime_data = {}
+        this.$store.commit(
+          'addNotification',
+          { notif: 'Job Started', to: `/jobs/${r.data.id}` })
       }).catch((error) => {
         this.$store.commit('setError', error.response.status)
         this.dialogOpen = false

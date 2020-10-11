@@ -6,14 +6,8 @@ from flask import Flask
 from backend.database import initialize_db, db
 from backend.api import initialize_api
 import os
-import backend.settings
+import backend.settings as settings
 import sys
-
-
-TEST_CONFIG = {
-    "SQLALCHEMY_DATABASE_URI": settings.TEST_DATABASE_URI,
-    "SQLALCHEMY_TRACK_MODIFICATIONS": False
-}
 
 
 def create_app():
@@ -21,13 +15,9 @@ def create_app():
     app = Flask(__name__)
 
     test_config = None
-    if os.environ.get("TEST", "false") == "True":
-        test_config = TEST_CONFIG
-    if test_config is None:
-        app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
-        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    else:
-        app.config.from_mapping(test_config)
+    app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    app.config["REDIS_CONF"] = settings.REDIS_CONF
 
     initialize_db(app)
     initialize_api(app)
@@ -43,3 +33,11 @@ def create_app():
         return response
 
     return app
+
+
+if __name__ == "__main__":
+    from backend import api
+    from flask_socketio import SocketIO
+
+    app = create_app()
+    api.socketio.run(app)
