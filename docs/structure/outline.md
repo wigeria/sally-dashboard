@@ -13,7 +13,7 @@ The project is based around three major components.
 
 The backend is built using Python 3 with the Flask framework. It revolves around using a PostgreSQL database for storing relational Bot data and a Redis database for acting as a message broker and task queue through the [Dramatiq](https://dramatiq.io/) Task Processing library.
 
-The backend and the tasks queue/worker(s) will be in a single container running in separate processes. Perhaps use supervisor for this.
+The backend and the tasks queue/worker(s) will be in a single container running in separate processes. Perhaps use supervisor for this. The tasks also communicate with the main flask process through a socket interface.
 
 The business model would be to serve this dashboard as a standalone set of docker-compose managed images, and after implementing a system for upload "plugins" (identified as python packages), create a dashboard for selling those plugins and other services such as hosting etc.
 
