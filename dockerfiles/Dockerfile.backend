@@ -11,6 +11,7 @@ COPY ./docs /code/docs
 COPY ./migrations /code/migrations
 COPY ./tasks /code/tasks
 COPY ./tests /code/tests
+COPY ./plugins /code/plugins
 COPY ./requirements/backend.txt /code/requirements.txt
 COPY ./mkdocs.yml /code/mkdocs.yml
 COPY ./scripts /scripts

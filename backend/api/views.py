@@ -85,6 +85,7 @@ class BotsListCreateResource(Resource, ListResourceMixin):
                 "errors": err.error
             }), 400)
         except AssertionError as err:
+            raise
             return make_response(jsonify({
                 "errors": {"assertion": err.args[0]}
             }), 400)

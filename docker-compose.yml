@@ -14,6 +14,7 @@ services:
       - ./migrations:/code/migrations
       - ./tasks:/code/tasks
       - ./tests:/code/tests
+      - ./plugins:/code/plugins
       - ./requirements/backend.txt:/code/requirements.txt
       - ./scripts:/scripts
       - ./mkdocs.yml:/code/mkdocs.yml

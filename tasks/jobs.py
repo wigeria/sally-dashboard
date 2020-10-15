@@ -13,6 +13,7 @@ import time
 # Note that this is loading __init__, which is causing the broker to be set
 # properly
 from . import dramatiq, settings
+from plugins import *
 
 
 os.environ["MOZ_HEADLESS"] = "1"
@@ -80,17 +81,22 @@ def run_bot(job_details, runtime_data):
     logger.add(log_file)
     logger.add(InterceptionHandler(job_id=job_id, socket=sio))
 
-    content = bot_utils.download_bot(s3_path)
-    print(f"RUNNING: {bot_id}, {content}")
+    content = bot_utils.download_bot(s3_path).decode()
+    print(f"RUNNING: {bot_id}")
 
     driver = get_driver()
-    engine = selenium_yaml.SeleniumYAML(
-        yaml_file=content,
-        save_screenshots=False,
-        template_context=runtime_data,
-        parse_template=bool(runtime_data),
-        driver=driver)
-    engine.perform(quit_driver=True)
+    try:
+        engine = selenium_yaml.SeleniumYAML(
+            yaml_file=content,
+            save_screenshots=False,
+            template_context=runtime_data,
+            parse_template=bool(runtime_data),
+            driver=driver)
+        engine.perform(quit_driver=True)
+    except:
+        if engine.driver is not None:
+            engine.__quit_driver()
+        pass
 
     # Log file now contains all of the logs sent through loguru in the engine
     log_file.seek(0)

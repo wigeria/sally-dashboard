@@ -132,3 +132,8 @@ dmypy.json
 migrations/
 backend/migrations/
 backend/test_migrations/
+
+# Custom plugins for SeleniumYAML
+plugins/*
+!plugins/README.md
+*.yml
