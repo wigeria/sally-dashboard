@@ -145,12 +145,14 @@ export default {
       })
       this.socket.on('job_update_notification', (data) => {
         this.$nuxt.$emit('job_update_notification', data)
-        setTimeout(() => {
-          this.$store.commit('addNotification', {
-            notif: `Job ${data.id} has finished`,
-            to: `/jobs/${data.id}`
-          })
-        }, 4000)
+        if (data.finish_time) {
+          setTimeout(() => {
+            this.$store.commit('addNotification', {
+              notif: `Job ${data.id} has finished`,
+              to: `/jobs/${data.id}`
+            })
+          }, 4000)
+        }
       })
     }
   },
