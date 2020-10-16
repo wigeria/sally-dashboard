@@ -4,4 +4,5 @@ cd /frontend/
 
 # Starting the frontend after building deps
 npm install
-npm run dev
+npm run build
+npm start
