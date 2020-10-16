@@ -122,7 +122,7 @@ Request Body:
 ```json
     {
         "bot_id": "Bot UUID",
-        "payload": {
+        "runtime_data": {
             "template_variable": "values"
         }
     }
