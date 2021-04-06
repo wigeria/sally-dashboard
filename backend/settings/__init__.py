@@ -27,3 +27,8 @@ if os.environ.get("TEST", "False") == "True":
     from .test_settings import *
 else:
     from .settings import *
+
+# Setting that must point to a callable that returns a selenium webdriver
+# implementor (ex "plugins.custom_plugin.module.initializer") if set
+SELENIUM_DRIVER_INITIALIZER = os.environ.get(
+    "SELENIUM_DRIVER_INITIALIZER", None)
