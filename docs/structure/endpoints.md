@@ -77,7 +77,7 @@ Response:
 
 ### Bot Details
 
-URL: `/api/bots/:botUUID`
+URL: `/api/bots/:botUUID/`
 
 Response:
 ```json
@@ -114,7 +114,7 @@ Response:
 
 ### Start Jobs
 
-URL: `/api/bots/`
+URL: `/api/jobs/`
 
 Method: `POST`
 
@@ -136,11 +136,11 @@ Response:
     }
 ```
 
-### List Jobs
+### Jobs Detail
 
-URL: `/api/bots/`
+URL: `/api/jobs/:jobUUID/`
 
-Method: `POST`
+Method: `GET`
 
 Parameters
 
