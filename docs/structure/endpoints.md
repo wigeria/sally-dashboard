@@ -75,19 +75,6 @@ Response:
     }
 ```
 
-### Bot Details
-
-URL: `/api/bots/:botUUID/`
-
-Response:
-```json
-    {
-        "uuid": "UUID",
-        "name": "bot name",
-        "file": "YAML Download link"
-    }
-```
-
 ### Bot Delete
 
 URL: `/api/bots/:botUUID`
