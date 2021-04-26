@@ -3,6 +3,7 @@
 from contextlib import redirect_stdout
 from datetime import datetime
 import io
+import importlib
 import json
 from flask import Flask
 import logging
@@ -83,6 +84,11 @@ def run_bot(job_details, runtime_data):
 
     content = bot_utils.download_bot(s3_path).decode()
     print(f"RUNNING: {bot_id}")
+
+    if settings.SELENIUM_DRIVER_INITIALIZER is not None:
+        mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit('.', 1)
+        package = importlib.import_module(mod_name)
+        get_driver = getattr(package, func_name)
 
     driver = get_driver()
     try:
