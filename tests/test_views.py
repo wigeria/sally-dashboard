@@ -131,7 +131,7 @@ def test_bot_details(client, db, user):
     headers = {"Authorization": f"Token {user.generate_jwt().decode()}"}
     r = client.get(url, headers=headers)
     assert r.status_code == 200
-    assert json.loads(r.json)["fields"] == ["url"]
+    assert r.json["fields"] == ["url"]
     db.session.delete(bot)
     db.session.commit()
 

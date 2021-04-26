@@ -116,7 +116,7 @@ class BotsRetreiveDeleteResource(Resource):
             }), 404)
 
         schema = BotsDetailSchema()
-        return schema.dumps(bot)
+        return make_response(jsonify(schema.dump(bot)))
 
 
     def delete(self, bot_id, user=None):
