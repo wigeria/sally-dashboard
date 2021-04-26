@@ -4,6 +4,7 @@ from backend.database.models import Bot, Job
 from backend.utils import bot_utils
 from datetime import datetime
 from io import BytesIO
+import json
 
 
 def test_running(client, user):
@@ -111,6 +112,28 @@ def test_bot_delete(client, db, user):
     r = client.delete(url, headers=headers)
     assert r.status_code == 200
 
+
+def test_bot_details(client, db, user):
+    """ Tests the bot-details GET API """
+    bot = Bot(name="TestBot")
+    db.session.add(bot)
+    db.session.commit()
+    content = b"""
+        title: Test
+        steps:
+            - title: navigate
+              action: navigate
+              url: {{ url }}
+    """
+    bot_utils.upload_bot(content, bot.s3_path)
+    url = f"/api/bots/{bot.id}/"
+
+    headers = {"Authorization": f"Token {user.generate_jwt().decode()}"}
+    r = client.get(url, headers=headers)
+    assert r.status_code == 200
+    assert json.loads(r.json)["fields"] == ["url"]
+    db.session.delete(bot)
+    db.session.commit()
 
 def test_job_start(client, db, user):
     """ Tests that a job can be created (started) successfully against a

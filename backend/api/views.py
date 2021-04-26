@@ -4,7 +4,7 @@ from . import api
 from .decorators import is_authenticated
 from .mixins import ListResourceMixin, CreateResourceMixin
 from .request_schemas import UserLoginRequestSchema
-from .serializers import BotsSchema, JobsSchema
+from .serializers import BotsSchema, JobsSchema, BotsDetailSchema
 from backend.database import db
 from backend.database.models import Bot, User, Job
 from backend.utils import bot_utils
@@ -101,9 +101,23 @@ class BotsListCreateResource(Resource, ListResourceMixin):
 api.add_resource(BotsListCreateResource, "/bots/")
 
 
-class BotsDeleteResource(Resource):
-    """ Resource implementing endpoints for deleting Bots """
+class BotsRetreiveDeleteResource(Resource):
+    """ Resource implementing endpoints for retreiving/deleting Bots """
     method_decorators = [is_authenticated]
+
+    def get(self, bot_id, user=None):
+        """ Returns details for the given Bot + it's Jinja fields
+            from the YAML
+        """
+        bot = Bot.query.filter(Bot.id == bot_id).first()
+        if not bot:
+            return make_response(jsonify({
+                "error": "Does Not Exist"
+            }), 404)
+
+        schema = BotsDetailSchema()
+        return schema.dumps(bot)
+
 
     def delete(self, bot_id, user=None):
         """ Deletes the given Bot as well as it's file from S3 """
@@ -119,7 +133,7 @@ class BotsDeleteResource(Resource):
         return make_response(jsonify({
             "message": "Deleted"
         }), 200)
-api.add_resource(BotsDeleteResource, "/bots/<string:bot_id>/")
+api.add_resource(BotsRetreiveDeleteResource, "/bots/<string:bot_id>/")
 
 
 class JobsListCreateResource(ListResourceMixin, Resource):

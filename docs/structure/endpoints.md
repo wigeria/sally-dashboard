@@ -81,6 +81,21 @@ URL: `/api/bots/:botUUID`
 
 Method: `DELETE`
 
+### Bots Detail
+
+URL: `/api/bots/:botUUID`
+
+Method: `GET`
+
+Response:
+```json
+    {
+        "uuid": "UUID",
+        "name": "Bot Name",
+        "fields": { bot Jinja fields }
+    }
+```
+
 ### List Jobs
 
 URL: `/api/jobs/`
