@@ -65,6 +65,18 @@ export default {
         this.dialogOpen = false
       })
     }
+  },
+  mounted () {
+    if (!this.bot) {
+      return
+    }
+    const url = `/api/bots/${this.bot.id}/`
+    this.$api.get(url).then((r) => {
+      this.formdata.runtime_data = {}
+      r.data.fields.forEach((field) => {
+        this.formdata.runtime_data[field] = ''
+      })
+    })
   }
 }
 </script>
