@@ -33,6 +33,7 @@ services:
     volumes:
       - ./scripts:/scripts
       - ./frontend:/frontend
+      - /frontend/node_modules/
     ports:
       - "3000:3000"
     env_file:
