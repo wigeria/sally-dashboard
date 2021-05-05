@@ -8,28 +8,32 @@
             @click="showCreateBotDialog = true"
           >Create Bot</v-btn>
           <v-list>
-            <v-list-item
-              v-for="bot in bots"
-              :key="bot.id"
-            >
-              <v-list-item-content>
-                <v-list-item-title v-text="bot.name" />
-              </v-list-item-content>
-              <v-list-item-action>
-                <v-btn
-                  @click="openJobStartDialog(bot)"
-                >
-                  <v-icon>mdi-play</v-icon>
-                </v-btn>
-              </v-list-item-action>
-              <v-list-item-action>
-                <v-btn
-                  @click="deleteBot(bot)"
-                >
-                  <v-icon>mdi-delete</v-icon>
-                </v-btn>
-              </v-list-item-action>
-            </v-list-item>
+            <template v-for="bot in bots">
+              <v-list-item
+                :key="bot.id + '-list-item'"
+              >
+                <v-list-item-content>
+                  <v-list-item-title v-text="bot.name" />
+                </v-list-item-content>
+                <v-list-item-action>
+                  <v-btn
+                    @click="openJobStartDialog(bot)"
+                  >
+                    <v-icon>mdi-play</v-icon>
+                  </v-btn>
+                </v-list-item-action>
+                <v-list-item-action>
+                  <v-btn
+                    @click="deleteBot(bot)"
+                  >
+                    <v-icon>mdi-delete</v-icon>
+                  </v-btn>
+                </v-list-item-action>
+              </v-list-item>
+              <v-divider
+                :key="bot.id"
+              ></v-divider>
+            </template>
           </v-list>
           <job-start-dialog
             v-model="showJobStartDialog"
