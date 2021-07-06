@@ -15,9 +15,10 @@ import time
 # properly
 from . import dramatiq, settings
 from plugins import *
+from pyvirtualdisplay import Display
 
 
-os.environ["MOZ_HEADLESS"] = "1"
+# os.environ["MOZ_HEADLESS"] = "1"
 
 
 def emit_job_message(socket, message):
@@ -90,19 +91,20 @@ def run_bot(job_details, runtime_data):
         package = importlib.import_module(mod_name)
         get_driver = getattr(package, func_name)
 
-    driver = get_driver()
-    try:
-        engine = selenium_yaml.SeleniumYAML(
-            yaml_file=content,
-            save_screenshots=False,
-            template_context=runtime_data,
-            parse_template=bool(runtime_data),
-            driver=driver)
-        engine.perform(quit_driver=True)
-    except:
-        if engine.driver is not None:
-            engine.__quit_driver()
-        pass
+    with Display() as display:
+        driver = get_driver()
+        try:
+            engine = selenium_yaml.SeleniumYAML(
+                yaml_file=content,
+                save_screenshots=False,
+                template_context=runtime_data,
+                parse_template=bool(runtime_data),
+                driver=driver)
+            engine.perform(quit_driver=True)
+        except:
+            if engine.driver is not None:
+                engine.__quit_driver()
+            pass
 
     # Log file now contains all of the logs sent through loguru in the engine
     log_file.seek(0)
