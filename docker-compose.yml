@@ -3,6 +3,7 @@ version: "3.8"
 services:
   redis_db:
     image: redis
+    restart: always
   backend:
     build:
       context: .
