@@ -4,6 +4,7 @@ services:
   redis_db:
     image: redis
     network_mode: host
+    restart: always
   backend:
     network_mode: host
     build:
