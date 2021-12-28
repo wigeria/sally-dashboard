@@ -2,7 +2,7 @@ import os
 import sys
 
 
-PROJECT_DIR = os.path.dirname(os.path.dirname(__file__))
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 MIGRATIONS_DIR = os.path.join(PROJECT_DIR, "migrations")
 
 # Deployment Settings

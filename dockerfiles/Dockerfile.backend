@@ -8,7 +8,7 @@ WORKDIR /code
 
 COPY ./backend /code/backend
 COPY ./docs /code/docs
-COPY ./migrations /code/migrations
+# COPY ./migrations /code/migrations
 COPY ./tasks /code/tasks
 COPY ./tests /code/tests
 COPY ./plugins /code/plugins
