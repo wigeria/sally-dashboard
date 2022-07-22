@@ -100,7 +100,7 @@ def run_bot(job_details, runtime_data):
                 template_context=runtime_data,
                 parse_template=bool(runtime_data),
                 driver=driver)
-            engine.perform(quit_driver=True)
+            engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
         except:
             if engine.driver is not None:
                 engine.__quit_driver()
