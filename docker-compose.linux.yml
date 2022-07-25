@@ -21,8 +21,6 @@ services:
       - ./requirements/backend.txt:/code/requirements.txt
       - ./scripts:/scripts
       - ./mkdocs.yml:/code/mkdocs.yml
-    ports:
-      - "5000:5000"
     env_file:
       - .env
     depends_on:
@@ -37,8 +35,6 @@ services:
       - ./scripts:/scripts
       - ./frontend:/frontend
       - /frontend/node_modules/
-    ports:
-      - "3000:3000"
     env_file:
       - .env
 
