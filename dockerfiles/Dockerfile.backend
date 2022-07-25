@@ -1,8 +1,9 @@
 FROM python:3.8.5-slim-buster
 ENV PYTHONUNBUFFERED 1
 
+RUN cp /etc/apt/sources.list /etc/apt/sources.list.bak && sed -i -re 's/([a-z]{2}\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
 RUN apt-get update
-RUN apt-get install -y python3-dev gcc libpq-dev vim
+RUN apt-get install -y python3-dev gcc libpq-dev vim --fix-missing
 RUN mkdir /code
 WORKDIR /code
 
@@ -30,7 +31,7 @@ RUN apt-get update && apt-get install -y \
 
 # install geckodriver and firefox
 
-RUN GECKODRIVER_VERSION=`curl https://github.com/mozilla/geckodriver/releases/latest | grep -Po 'v[0-9]+.[0-9]+.[0-9]+'` && \
+RUN GECKODRIVER_VERSION=`curl https://github.com/mozilla/geckodriver/releases/latest -L -s | grep -Po 'v[0-9]+\.[0-9]+.[0-9]+' | head -n 1` && \
     wget https://github.com/mozilla/geckodriver/releases/download/$GECKODRIVER_VERSION/geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz && \
     tar -zxf geckodriver-$GECKODRIVER_VERSION-linux64.tar.gz -C /usr/local/bin && \
     chmod +x /usr/local/bin/geckodriver && \
@@ -42,5 +43,22 @@ RUN FIREFOX_SETUP=firefox-setup.tar.bz2 && \
     tar xjf $FIREFOX_SETUP -C /opt/ && \
     ln -s /opt/firefox/firefox /usr/bin/firefox && \
     rm $FIREFOX_SETUP
+
+# install google chrome
+RUN CHROMEDRIVER_VERSION=`curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE` && \
+    wget https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip -d /usr/bin && \
+    chmod +x /usr/bin/chromedriver && \
+    rm chromedriver_linux64.zip
+
+RUN apt-get install libgbm-dev -y
+RUN CHROME_SETUP=google-chrome.deb && \
+    wget -O $CHROME_SETUP "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb" && \
+    dpkg -i $CHROME_SETUP && \
+    apt-get install -y -f && \
+    rm $CHROME_SETUP
+
+# set display port to avoid crash
+ENV DISPLAY=:99
 
 CMD ["/scripts/run_backend.sh"]
