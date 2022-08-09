@@ -41,7 +41,7 @@ class InterceptionHandler(logging.Handler):
         # TODO: Publish message to `job_id` channel in the broker
 
 
-def get_driver():
+def get_driver(*args, **kwargs):
     """ Returns the driver used for running the bots """
     driver = webdriver.Firefox()
     return driver
@@ -92,7 +92,8 @@ def run_bot(job_details, runtime_data):
         get_driver = getattr(package, func_name)
 
     with Display() as display:
-        driver = get_driver()
+        driver = get_driver(
+            job_details=job_details, runtime_data=runtime_data)
         try:
             engine = selenium_yaml.SeleniumYAML(
                 yaml_file=content,
