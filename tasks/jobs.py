@@ -104,7 +104,8 @@ def run_bot(job_details, runtime_data):
             engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
         except:
             if engine.driver is not None:
-                engine.__quit_driver()
+                engine.driver.quit()
+                engine.driver = None
             pass
 
     # Log file now contains all of the logs sent through loguru in the engine
