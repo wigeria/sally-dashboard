@@ -106,7 +106,6 @@ def run_bot(job_details, runtime_data):
             if engine.driver is not None:
                 engine.driver.quit()
                 engine.driver = None
-            pass
 
     # Log file now contains all of the logs sent through loguru in the engine
     log_file.seek(0)

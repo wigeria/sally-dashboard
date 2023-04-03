@@ -43,6 +43,7 @@ def test_bot_creation(client, db, user):
     """
     ctype = "multipart/form-data"
     content = b"""
+        title: Test Bot
         steps:
           - title: Step 1
             action: navigate
