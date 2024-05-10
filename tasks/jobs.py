@@ -72,16 +72,13 @@ def run_bot(job_details, runtime_data):
     import selenium_yaml
     from loguru import logger
 
-    # Performs a concurrent retry while waiting in queue
     with DISTRIBUTED_MUTEX.acquire():
         job_id = job_details["id"]
         bot_id = job_details["bot_id"]
         s3_path = job_details["s3_path"]
         sio = socketio.Client()
         sio.connect(
-            settings.WS_URL+f"?secret={settings.WS_SECRET}",
-            namespaces=["/jobs"],
-        )
+            settings.WS_URL+f"?secret={settings.WS_SECRET}", namespaces=["/jobs"])
 
         log_file = io.StringIO()
         logger.add(log_file)
@@ -91,8 +88,7 @@ def run_bot(job_details, runtime_data):
         print(f"RUNNING: {bot_id}")
 
         if settings.SELENIUM_DRIVER_INITIALIZER is not None:
-            mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit(
-                '.', 1)
+            mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit('.', 1)
             package = importlib.import_module(mod_name)
             get_driver = getattr(package, func_name)
 
