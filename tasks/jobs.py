@@ -13,7 +13,7 @@ import socketio
 import time
 # Note that this is loading __init__, which is causing the broker to be set
 # properly
-from . import dramatiq, settings
+from . import dramatiq, settings, DISTRIBUTED_MUTEX
 from plugins import *
 from pyvirtualdisplay import Display
 
@@ -72,64 +72,65 @@ def run_bot(job_details, runtime_data):
     import selenium_yaml
     from loguru import logger
 
-    job_id = job_details["id"]
-    bot_id = job_details["bot_id"]
-    s3_path = job_details["s3_path"]
-    sio = socketio.Client()
-    sio.connect(
-        settings.WS_URL+f"?secret={settings.WS_SECRET}", namespaces=["/jobs"])
+    with DISTRIBUTED_MUTEX.acquire():
+        job_id = job_details["id"]
+        bot_id = job_details["bot_id"]
+        s3_path = job_details["s3_path"]
+        sio = socketio.Client()
+        sio.connect(
+            settings.WS_URL+f"?secret={settings.WS_SECRET}", namespaces=["/jobs"])
 
-    log_file = io.StringIO()
-    logger.add(log_file)
-    logger.add(InterceptionHandler(job_id=job_id, socket=sio))
+        log_file = io.StringIO()
+        logger.add(log_file)
+        logger.add(InterceptionHandler(job_id=job_id, socket=sio))
 
-    content = bot_utils.download_bot(s3_path).decode()
-    print(f"RUNNING: {bot_id}")
+        content = bot_utils.download_bot(s3_path).decode()
+        print(f"RUNNING: {bot_id}")
 
-    if settings.SELENIUM_DRIVER_INITIALIZER is not None:
-        mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit('.', 1)
-        package = importlib.import_module(mod_name)
-        get_driver = getattr(package, func_name)
+        if settings.SELENIUM_DRIVER_INITIALIZER is not None:
+            mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit('.', 1)
+            package = importlib.import_module(mod_name)
+            get_driver = getattr(package, func_name)
 
-    with Display() as display:
-        driver = get_driver(
-            job_details=job_details, runtime_data=runtime_data)
-        try:
-            engine = selenium_yaml.SeleniumYAML(
-                yaml_file=content,
-                save_screenshots=False,
-                template_context=runtime_data,
-                parse_template=bool(runtime_data),
-                driver=driver)
-            engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
-        except:
-            if engine.driver is not None:
-                engine.driver.quit()
-                engine.driver = None
+        with Display() as display:
+            driver = get_driver(
+                job_details=job_details, runtime_data=runtime_data)
+            try:
+                engine = selenium_yaml.SeleniumYAML(
+                    yaml_file=content,
+                    save_screenshots=False,
+                    template_context=runtime_data,
+                    parse_template=bool(runtime_data),
+                    driver=driver)
+                engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
+            except:
+                if engine.driver is not None:
+                    engine.driver.quit()
+                    engine.driver = None
 
-    # Log file now contains all of the logs sent through loguru in the engine
-    log_file.seek(0)
-    finish_time = datetime.utcnow()
+        # Log file now contains all of the logs sent through loguru in the engine
+        log_file.seek(0)
+        finish_time = datetime.utcnow()
 
-    emit_job_message(
-        sio,
-        {
-            "id": job_id,
-            "log": "-- Finished --",
-            "finish_time": finish_time.isoformat()
-        })
+        emit_job_message(
+            sio,
+            {
+                "id": job_id,
+                "log": "-- Finished --",
+                "finish_time": finish_time.isoformat()
+            })
 
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
-    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-    db.init_app(app)
-    with app.app_context():
-        job = Job.query.filter(Job.id == job_id).first()
-        if not job:
-            raise ValueError(
-                f"Received completion for job that doesn't exist; `{message}`")
+        app = Flask(__name__)
+        app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
+        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+        db.init_app(app)
+        with app.app_context():
+            job = Job.query.filter(Job.id == job_id).first()
+            if not job:
+                raise ValueError(
+                    f"Received completion for job that doesn't exist; `{message}`")
 
-        job.finish_time = finish_time
-        job.logs = log_file.getvalue()
-        db.session.commit()
-    sio.disconnect()
+            job.finish_time = finish_time
+            job.logs = log_file.getvalue()
+            db.session.commit()
+        sio.disconnect()
