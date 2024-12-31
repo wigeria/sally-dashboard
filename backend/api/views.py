@@ -146,12 +146,18 @@ class JobsListCreateResource(ListResourceMixin, Resource):
         """ Overwritten to add support for filtering by status """
         filters = []
         status = request.args.get("status", None)
+        bot_name = request.args.get("bot_name", None)
         if status == "0":
             filters.append(Job.finish_time == None)
         elif status == "1":
             filters.append(Job.finish_time != None)
+
+        if bot_name:
+            filters.append(Job.bot.has(name=bot_name))
+
         return self.model_class.query.filter(*filters) \
-            .options(joinedload(Job.bot))
+            .options(joinedload(Job.bot)) \
+            .order_by(self.model_class.start_time.desc())
 
     def post(self, user=None):
         """ Creates and starts a new job against a given bot """
