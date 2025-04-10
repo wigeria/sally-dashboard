@@ -137,3 +137,6 @@ backend/test_migrations/
 plugins/*
 !plugins/README.md
 *.yml
+
+# Passwd files
+xvnc_passwd

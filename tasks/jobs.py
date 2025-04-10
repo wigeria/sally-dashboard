@@ -16,6 +16,7 @@ import time
 from . import dramatiq, settings, DISTRIBUTED_MUTEX
 from plugins import *
 from pyvirtualdisplay import Display
+import subprocess
 
 
 # os.environ["MOZ_HEADLESS"] = "1"
@@ -92,21 +93,44 @@ def run_bot(job_details, runtime_data):
             package = importlib.import_module(mod_name)
             get_driver = getattr(package, func_name)
 
-        with Display() as display:
-            driver = get_driver(
-                job_details=job_details, runtime_data=runtime_data)
+        with Display(
+            backend='xvnc',
+            size=(1920, 1080),
+            rfbauth="/code/xvnc_passwd",
+        ) as display:
+            display_num = display.display
+            rfb_port = 5900 + display_num  # Default VNC Port
+            assert rfb_port < 100
+            logger.debug(f"Running VNC for :{display_num} at [{rfb_port}]")
+
+            # Creating a noVNC HTTP Server forwarding the rfb-port
+            # TODO: Need to figure out best way to expose these ports on Nginx
+            #   And implement this to open in the frontend
+            novnc_port = rfb_port - 101
+            assert novnc_port < 5900 and novnc_port > 5800
+            novnc_process = subprocess.Popen([
+                'novnc',
+                '--listen', f'localhost:{rfb_port - 101}',
+                '--vnc', f'localhost:{rfb_port}',
+            ])
             try:
-                engine = selenium_yaml.SeleniumYAML(
-                    yaml_file=content,
-                    save_screenshots=False,
-                    template_context=runtime_data,
-                    parse_template=bool(runtime_data),
-                    driver=driver)
-                engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
-            except:
-                if engine.driver is not None:
-                    engine.driver.quit()
-                    engine.driver = None
+                driver = get_driver(
+                    job_details=job_details, runtime_data=runtime_data)
+                try:
+                    engine = selenium_yaml.SeleniumYAML(
+                        yaml_file=content,
+                        save_screenshots=False,
+                        template_context=runtime_data,
+                        parse_template=bool(runtime_data),
+                        driver=driver)
+                    engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
+                except:
+                    if engine.driver is not None:
+                        engine.driver.quit()
+                        engine.driver = None
+            finally:
+                novnc_process.terminate()
+                novnc_process.wait()
 
         # Log file now contains all of the logs sent through loguru in the engine
         log_file.seek(0)

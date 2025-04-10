@@ -21,6 +21,7 @@ services:
       - ./requirements/backend.txt:/code/requirements.txt
       - ./scripts:/scripts
       - ./mkdocs.yml:/code/mkdocs.yml
+      - ./xvnc_passwd:/code/xvnc_passwd
     env_file:
       - .env
     depends_on:
