@@ -3,10 +3,10 @@ version: "3.8"
 services:
   redis_db:
     image: redis
-    network_mode: host
     restart: always
+    ports:
+      - "6379:6379"
   backend:
-    network_mode: host
     build:
       context: .
       dockerfile: ./dockerfiles/Dockerfile.backend
@@ -26,6 +26,9 @@ services:
       - .env
     depends_on:
       - redis_db
+    ports:
+      - "5000:5000"
+      - "5800-5899:5800-5899"
   frontend:
     depends_on:
       - backend

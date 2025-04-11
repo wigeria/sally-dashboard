@@ -99,15 +99,16 @@ def run_bot(job_details, runtime_data):
             rfbauth="/code/xvnc_passwd",
         ) as display:
             display_num = display.display
-            rfb_port = 5900 + display_num  # Default VNC Port
-            assert rfb_port < 100
+            rfb_port = display._obj._rfbport
             logger.debug(f"Running VNC for :{display_num} at [{rfb_port}]")
+            assert rfb_port < 5999
 
             # Creating a noVNC HTTP Server forwarding the rfb-port
             # TODO: Need to figure out best way to expose these ports on Nginx
             #   And implement this to open in the frontend
-            novnc_port = rfb_port - 101
-            assert novnc_port < 5900 and novnc_port > 5800
+            novnc_port = rfb_port - 100
+            logger.debug(f"Running NoVNC for {rfb_port=} at {novnc_port}")
+            assert novnc_port < 5900 and novnc_port >= 5800
             novnc_process = subprocess.Popen([
                 'novnc',
                 '--listen', f'localhost:{rfb_port - 101}',
