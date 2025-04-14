@@ -1,4 +1,5 @@
 import colors from 'vuetify/es5/util/colors'
+const path = require("path");
 
 export default {
   // Disable server-side rendering (https://go.nuxtjs.dev/ssr-mode)
@@ -79,5 +80,17 @@ export default {
 
   // Build Configuration (https://go.nuxtjs.dev/config-build)
   build: {
+    extend(config, ctx) {
+      config.resolve.alias['@novnc'] = path.resolve(__dirname, 'node_modules/@novnc')
+      // Add babel-loader for novnc files
+      config.module.rules.push({
+        test: /\.js$/,
+        include: [
+          path.resolve(__dirname, 'node_modules/@novnc')
+        ],
+        loader: 'babel-loader'
+      })
+    },
+    transpile: ['@novnc/novnc'],
   }
 }

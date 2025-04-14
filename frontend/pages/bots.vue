@@ -9,9 +9,7 @@
           >Create Bot</v-btn>
           <v-list>
             <template v-for="bot in bots">
-              <v-list-item
-                :key="bot.id + '-list-item'"
-              >
+              <v-list-item :key="bot.id + '-list-item'">
                 <v-list-item-content>
                   <v-list-item-title v-text="bot.name" />
                 </v-list-item-content>

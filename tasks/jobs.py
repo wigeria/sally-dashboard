@@ -17,7 +17,18 @@ from . import dramatiq, settings, DISTRIBUTED_MUTEX
 from plugins import *
 from pyvirtualdisplay import Display
 import subprocess
+import websockify
+from multiprocessing import Process
 
+
+def run_websockify(websockify_port, rfb_port):
+    websockify_server = websockify.WebSocketProxy(
+        listen_port=websockify_port,
+        target_host='localhost',
+        target_port=rfb_port,
+        daemon=False,
+    )
+    websockify_server.start_server()
 
 # os.environ["MOZ_HEADLESS"] = "1"
 
@@ -96,24 +107,28 @@ def run_bot(job_details, runtime_data):
         with Display(
             backend='xvnc',
             size=(1920, 1080),
+            # File containing the vnc password, generated with `vncpasswd`
             rfbauth="/code/xvnc_passwd",
         ) as display:
+            # TODO: Set up tracking to track which bot is running at which port
+            # Creating a VNC Server at :rfb_port and forwarding it over a
+            # Websockify Proxy at :websockify_port which can be connected to
+            # via noVNC
             display_num = display.display
             rfb_port = display._obj._rfbport
             logger.debug(f"Running VNC for :{display_num} at [{rfb_port}]")
             assert rfb_port < 5999
+            websockify_port = rfb_port - 100
+            logger.debug(f"Running websockify for :{display_num} at [{websockify_port}]")
+            # TODO: Switch to wss using a proper cert/key
+            # TODO 1: Add CORS Headers
+            # Add `ssl_only`, `verify_client`, and `cafile`
+            websockify_proc = Process(
+                target=run_websockify,
+                args=(websockify_port, rfb_port)
+            )
+            websockify_proc.start()
 
-            # Creating a noVNC HTTP Server forwarding the rfb-port
-            # TODO: Need to figure out best way to expose these ports on Nginx
-            #   And implement this to open in the frontend
-            novnc_port = rfb_port - 100
-            logger.debug(f"Running NoVNC for {rfb_port=} at {novnc_port}")
-            assert novnc_port < 5900 and novnc_port >= 5800
-            novnc_process = subprocess.Popen([
-                'novnc',
-                '--listen', f'localhost:{rfb_port - 101}',
-                '--vnc', f'localhost:{rfb_port}',
-            ])
             try:
                 driver = get_driver(
                     job_details=job_details, runtime_data=runtime_data)
@@ -130,8 +145,8 @@ def run_bot(job_details, runtime_data):
                         engine.driver.quit()
                         engine.driver = None
             finally:
-                novnc_process.terminate()
-                novnc_process.wait()
+                websockify_proc.terminate()
+                websockify_proc.join()
 
         # Log file now contains all of the logs sent through loguru in the engine
         log_file.seek(0)

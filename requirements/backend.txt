@@ -74,3 +74,4 @@ zope.event==4.5.0
 zope.interface==5.1.2
 pyvirtualdisplay==2.2
 undetected-chromedriver==3.2.1
+websockify==0.12.0
