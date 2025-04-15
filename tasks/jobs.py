@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stdout
 from datetime import datetime
+from backend.database.models import Job
 import io
 import importlib
 import json
@@ -79,98 +80,105 @@ def run_bot(job_details, runtime_data):
     # This is all imported inside the worker to keep the logs in
     # separate file-objects per task
     from backend.utils import bot_utils
-    from backend.database import db
-    from backend.database.models import Job
-    import selenium_yaml
+    from tasks import task_utils
+    import selenium_yaml # type: ignore
     from loguru import logger
 
-    with DISTRIBUTED_MUTEX.acquire():
+    with DISTRIBUTED_MUTEX.acquire(), task_utils.TaskContextManager() as db:
         job_id = job_details["id"]
         bot_id = job_details["bot_id"]
         s3_path = job_details["s3_path"]
+
+        # Getting the job being executed
+        job = Job.query.filter(Job.id == job_id).first()
         sio = socketio.Client()
         sio.connect(
             settings.WS_URL+f"?secret={settings.WS_SECRET}", namespaces=["/jobs"])
-
+        # Intercepting the logs to add data into the log-file and sending them
+        # to a websocket
         log_file = io.StringIO()
         logger.add(log_file)
         logger.add(InterceptionHandler(job_id=job_id, socket=sio))
 
-        content = bot_utils.download_bot(s3_path).decode()
-        print(f"RUNNING: {bot_id}")
+        # Incrementing and getting the current number of used rfb ports
+        # (+1 for this new task)
+        current_used_rfb_ports = task_utils.incr_used_rfb_ports()
 
-        if settings.SELENIUM_DRIVER_INITIALIZER is not None:
-            mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit('.', 1)
-            package = importlib.import_module(mod_name)
-            get_driver = getattr(package, func_name)
+        try:
+            content = bot_utils.download_bot(s3_path).decode()
+            print(f"RUNNING: {bot_id}; [{job_id}]")
 
-        with Display(
-            backend='xvnc',
-            size=(1920, 1080),
-            # File containing the vnc password, generated with `vncpasswd`
-            rfbauth="/code/xvnc_passwd",
-        ) as display:
-            # TODO: Set up tracking to track which bot is running at which port
-            # Creating a VNC Server at :rfb_port and forwarding it over a
-            # Websockify Proxy at :websockify_port which can be connected to
-            # via noVNC
-            display_num = display.display
-            rfb_port = display._obj._rfbport
-            logger.debug(f"Running VNC for :{display_num} at [{rfb_port}]")
-            assert rfb_port < 5999
-            websockify_port = rfb_port - 100
-            logger.debug(f"Running websockify for :{display_num} at [{websockify_port}]")
-            # TODO: Switch to wss using a proper cert/key
-            # TODO 1: Add CORS Headers
-            # Add `ssl_only`, `verify_client`, and `cafile`
-            websockify_proc = Process(
-                target=run_websockify,
-                args=(websockify_port, rfb_port)
-            )
-            websockify_proc.start()
+            if settings.SELENIUM_DRIVER_INITIALIZER is not None:
+                mod_name, func_name = settings.SELENIUM_DRIVER_INITIALIZER.rsplit('.', 1)
+                package = importlib.import_module(mod_name)
+                get_driver = getattr(package, func_name)
 
-            try:
-                driver = get_driver(
-                    job_details=job_details, runtime_data=runtime_data)
-                try:
-                    engine = selenium_yaml.SeleniumYAML(
-                        yaml_file=content,
-                        save_screenshots=False,
-                        template_context=runtime_data,
-                        parse_template=bool(runtime_data),
-                        driver=driver)
-                    engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
-                except:
-                    if engine.driver is not None:
-                        engine.driver.quit()
-                        engine.driver = None
-            finally:
-                websockify_proc.terminate()
-                websockify_proc.join()
+            with Display(
+                backend='xvnc',
+                size=(1920, 1080),
+                # File containing the vnc password, generated with `vncpasswd`
+                rfbauth="/code/xvnc_passwd",
+                manage_global_env=False,
+                rfbport=5900+current_used_rfb_ports,
+            ) as display:
+                # TODO: Set up tracking to track which bot is running at which port
+                # Creating a VNC Server at :rfb_port and forwarding it over a
+                # Websockify Proxy at :websockify_port which can be connected to
+                # via noVNC
+                display_num = display.display
+                rfb_port = display._obj._rfbport
+                logger.debug(f"Running VNC for :{display_num} at [{rfb_port}].")
+                assert rfb_port < 5999
+                websockify_port = rfb_port - 100
+                logger.debug(f"Running websockify for :{display_num} at [{websockify_port}]")
+                # TODO: Switch to wss using a proper cert/key
+                # TODO 1: Add CORS Headers
+                # Add `ssl_only`, `verify_client`, and `cafile`
+                websockify_proc = Process(
+                    target=run_websockify,
+                    args=(websockify_port, rfb_port)
+                )
+                websockify_proc.start()
+                # Waiting for the websockify port to be available
+                if task_utils.wait_for_port(websockify_port):
+                    job.vnc_ws_proxy_port = websockify_port
+                    db.session.commit()
+                else:
+                    raise ValueError(f"Unable to connect to websockify port for {job_id}")
 
-        # Log file now contains all of the logs sent through loguru in the engine
-        log_file.seek(0)
-        finish_time = datetime.utcnow()
+                with task_utils.with_env(display.env()):
+                    try:
+                        driver = get_driver(
+                            job_details=job_details, runtime_data=runtime_data)
+                        try:
+                            engine = selenium_yaml.SeleniumYAML(
+                                yaml_file=content,
+                                save_screenshots=False,
+                                template_context=runtime_data,
+                                parse_template=bool(runtime_data),
+                                driver=driver)
+                            engine.perform(quit_driver=True, dynamic_delay_range=(0.5, 2))
+                        except:
+                            if engine.driver is not None:
+                                engine.driver.quit()
+                                engine.driver = None
+                    finally:
+                        websockify_proc.terminate()
+                        websockify_proc.join()
 
-        emit_job_message(
-            sio,
-            {
-                "id": job_id,
-                "log": "-- Finished --",
-                "finish_time": finish_time.isoformat()
-            })
-
-        app = Flask(__name__)
-        app.config["SQLALCHEMY_DATABASE_URI"] = settings.DATABASE_URI
-        app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-        db.init_app(app)
-        with app.app_context():
-            job = Job.query.filter(Job.id == job_id).first()
-            if not job:
-                raise ValueError(
-                    f"Received completion for job that doesn't exist; `{message}`")
-
-            job.finish_time = finish_time
+            emit_job_message(
+                sio,
+                {
+                    "id": job_id,
+                    "log": "-- Finished --",
+                    "finish_time": datetime.now().isoformat()
+                })
+        finally:
+            # Decrementing the used-rfb-ports
+            task_utils.decr_used_rfb_ports()
+            # Marking the job as finished + setting logs in the db
+            job.finish_time = datetime.now()
+            log_file.seek(0)
             job.logs = log_file.getvalue()
             db.session.commit()
-        sio.disconnect()
+            sio.disconnect()

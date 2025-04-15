@@ -7,6 +7,9 @@ Sally Dashboard is a UI for creating, managing and running [SeleniumYAML](https:
 ## Commands
 
 - `flask db history --directory=backend/migrations` - Get migrations history
+- `flask db migrate --directory=backend/migrations` - Create a new migration
+- `flask db upgrade --directory=backend/migrations [revision]` - Upgrade to a newer migration
+- `flask db downgrade --directory=backend/migrations [revision]` - Downgrade to an older migration
 - `flask run` - Run flask app
 - `pytest tests` - Run flask tests
 - `mkdocs serve` - Serve the documentation

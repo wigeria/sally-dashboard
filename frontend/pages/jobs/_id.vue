@@ -80,7 +80,7 @@ export default {
         const container = document.getElementById('vnc-container')
         console.log({ ref: this.$refs, container })
         // TODO: Get Host from environment, and port from Job Details
-        this.rfb = new RFB(this.$refs.vncContainer, 'ws://localhost:5800', {
+        this.rfb = new RFB(this.$refs.vncContainer, 'ws://localhost:5801', {
           // TODO: get Password from environment
           credentials: { password: '12345678' }
         })

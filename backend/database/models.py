@@ -22,7 +22,7 @@ class BaseFieldsMixin:
 
 class User(db.Model, BaseFieldsMixin):
     """ Represents the User instance for authentication
-        
+
         To create a new user:
             user = User(**username_and_email)
             user.password = password  # This hashes the password
@@ -98,6 +98,7 @@ class Job(db.Model, BaseFieldsMixin):
     finish_time = db.Column(db.DateTime, nullable=True)
     logs = db.Column(db.Text)
     runtime_data = db.Column(JSON)
+    vnc_ws_proxy_port = db.Column(db.Integer, nullable=True, default=None)
 
     bot_id = db.Column(
         UUID(as_uuid=True), db.ForeignKey(Bot.id), nullable=False)
