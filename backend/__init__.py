@@ -22,6 +22,13 @@ def create_app():
     initialize_db(app)
     initialize_api(app)
 
+    @app.before_first_request
+    def before_first_request():
+        # Clearing the redis data that would've cleared on the last exit
+        import tasks.task_utils as task_utils
+        """ Run once before the first request to clear rfb ports """
+        task_utils.clear_used_rfb_ports()
+
     @app.after_request
     def after_request(response):
         """ Adding CORS headers into response """

@@ -42,14 +42,16 @@ def emit_job_message(socket, message):
         namespace='/'
     )
 
-class InterceptionHandler(logging.Handler):
+class LogsInterceptionHandler(logging.Handler):
     def __init__(self, *args, job_id=None, socket=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.job_id = job_id
         self.socket = socket
+        self.log_file = io.StringIO()
 
     def emit(self, record):
         message = record.getMessage()
+        self.log_file.write(f"{message}\n")
         emit_job_message(self.socket, {"id": self.job_id, "log": message})
         # TODO: Publish message to `job_id` channel in the broker
 
@@ -96,13 +98,13 @@ def run_bot(job_details, runtime_data):
             settings.WS_URL+f"?secret={settings.WS_SECRET}", namespaces=["/jobs"])
         # Intercepting the logs to add data into the log-file and sending them
         # to a websocket
-        log_file = io.StringIO()
-        logger.add(log_file)
-        logger.add(InterceptionHandler(job_id=job_id, socket=sio))
+        interceptor = LogsInterceptionHandler(
+            job_id=job_id, socket=sio)
+        logger.add(interceptor)
 
         # Incrementing and getting the current number of used rfb ports
         # (+1 for this new task)
-        current_used_rfb_ports = task_utils.incr_used_rfb_ports()
+        rfb_port = task_utils.lock_new_rfb_port()
 
         try:
             content = bot_utils.download_bot(s3_path).decode()
@@ -119,14 +121,13 @@ def run_bot(job_details, runtime_data):
                 # File containing the vnc password, generated with `vncpasswd`
                 rfbauth="/code/xvnc_passwd",
                 manage_global_env=False,
-                rfbport=5900+current_used_rfb_ports,
+                rfbport=rfb_port,
             ) as display:
                 # TODO: Set up tracking to track which bot is running at which port
                 # Creating a VNC Server at :rfb_port and forwarding it over a
                 # Websockify Proxy at :websockify_port which can be connected to
                 # via noVNC
                 display_num = display.display
-                rfb_port = display._obj._rfbport
                 logger.debug(f"Running VNC for :{display_num} at [{rfb_port}].")
                 assert rfb_port < 5999
                 websockify_port = rfb_port - 100
@@ -175,10 +176,10 @@ def run_bot(job_details, runtime_data):
                 })
         finally:
             # Decrementing the used-rfb-ports
-            task_utils.decr_used_rfb_ports()
+            task_utils.unlock_rfb_port(rfb_port)
             # Marking the job as finished + setting logs in the db
             job.finish_time = datetime.now()
-            log_file.seek(0)
-            job.logs = log_file.getvalue()
+            interceptor.log_file.seek(0)
+            job.logs = interceptor.log_file.getvalue()
             db.session.commit()
             sio.disconnect()

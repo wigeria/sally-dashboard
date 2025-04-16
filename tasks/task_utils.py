@@ -37,49 +37,73 @@ def redis_lock(redis_client, key: str, timeout: int = 10):
         lock.release()
 
 
-# TODO: Change the redis logic to be a list of used-ports, and remove ports on
-# task finish. Take the smallest port between 5800-5899 that is unused.
-def incr_used_rfb_ports():
-    """ Increments the used_rfb_ports value by 1
+def lock_new_rfb_port():
+    """ Adds the smallest unused RFB port to the list of used_rfb_ports.
 
+        This function searches for the smallest port number in the range
+        from 5800 to 5899 that is not currently in use and adds it to the
+        list of used RFB ports in Redis. If a port is successfully
+        allocated, it returns the port number. If no ports are available,
+        it returns -1.
         Returns:
-            int: The incremented used_rfb_ports value
+            int: The newly allocated RFB port number if successful;
+            -1 if all ports in the specified range are currently in use.
     """
     r = redis.Redis(host=settings.REDIS_CONF['host'],
                     port=settings.REDIS_CONF['port'],
                     db=settings.REDIS_CONF['db'])
     key = 'sally:vnc:used_rfb_ports'
+    available_ports = list(range(5900, 6000))  # List of ports from 5800 to 5899
+
     with redis_lock(r, key, 10):
-        value = r.get(key)
-        # Returns 1 if there aren't any used-rfb-ports
-        if value is None:
-            r.set(key, 1)
-            return 1
-        else:
-            # Otherwise, increments it
-            new_value = int(value) + 1
-            r.set(key, new_value)
-            return new_value
+        used_ports = r.lrange(key, 0, -1)
+        used_ports = [int(port) for port in used_ports]  # Convert bytes to integers
+
+        # Find the smallest unused port
+        for port in available_ports:
+            if port not in used_ports:
+                r.rpush(key, port)
+                return port
+
+    raise ValueError("No available port")
 
 
-def decr_used_rfb_ports():
-    """ Decrements the used_rfb_ports value by 1"""
+def unlock_rfb_port(port):
+    """ Decrements the used_rfb_ports value by removing the specified port
+
+        Returns:
+            bool: True if the port was successfully removed, False otherwise
+    """
     r = redis.Redis(host=settings.REDIS_CONF['host'],
                     port=settings.REDIS_CONF['port'],
                     db=settings.REDIS_CONF['db'])
     key = 'sally:vnc:used_rfb_ports'
-    with redis_lock(r, key, 60):
-        value = r.get(key)
-        if value is not None and value != 0:
-            new_value = max(1, int(value) - 1)
-            r.set(key, new_value)
-            return new_value
-        return 0
+
+    with redis_lock(r, key, 10):
+        used_ports = r.lrange(key, 0, -1)
+        used_ports = [int(p) for p in used_ports]  # Convert bytes to integers
+
+        if port in used_ports:
+            r.lrem(key, 1, port)  # Remove the specified port
+            return True
+
+    return False  # Indicate that the port was not found
+
+
+def clear_used_rfb_ports():
+    """ Clears all of the used RFB ports from Redis """
+    r = redis.Redis(host=settings.REDIS_CONF['host'],
+                    port=settings.REDIS_CONF['port'],
+                    db=settings.REDIS_CONF['db'])
+    key = 'sally:vnc:used_rfb_ports'
+
+    with redis_lock(r, key, 10):
+        r.delete(key)  # Clear the list of used RFB ports
 
 
 @contextmanager
 def with_env(custom_env: dict):
-    """Async context manager for custom environment"""
+    """ Async context manager for custom environment """
     with patch.dict('os.environ', custom_env, clear=True):
         yield
 

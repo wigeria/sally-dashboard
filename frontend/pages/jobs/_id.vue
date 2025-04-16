@@ -79,8 +79,10 @@ export default {
       try {
         const container = document.getElementById('vnc-container')
         console.log({ ref: this.$refs, container })
-        // TODO: Get Host from environment, and port from Job Details
-        this.rfb = new RFB(this.$refs.vncContainer, 'ws://localhost:5801', {
+        const websocketPort = this.job.vnc_ws_proxy_port
+        console.log(this.$config, process.env)
+        const websocketHost = this.$config.vncWsHost
+        this.rfb = new RFB(this.$refs.vncContainer, `ws://${websocketHost}:${websocketPort}`, {
           // TODO: get Password from environment
           credentials: { password: '12345678' }
         })
@@ -111,9 +113,12 @@ export default {
   },
   mounted () {
     const checkJob = setInterval(() => {
-      if (this.job !== null) {
-        console.log(document.getElementById('vnc-container'))
+      // Only initializing VNC if the job exists, has a VNC port assigned, and is unfinished
+      if (this.job !== null && this.job.vnc_ws_proxy_port && this.job.finish_time === null) {
         this.initVNC()
+        clearInterval(checkJob)
+      } else if (this.job !== null && this.job.finish_time !== null) {
+        // Clearing the interval if the job is already finished
         clearInterval(checkJob)
       }
     }, 100)

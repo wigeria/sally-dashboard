@@ -6,7 +6,9 @@
         <v-card-text>
           <v-btn
             @click="showCreateBotDialog = true"
-          >Create Bot</v-btn>
+          >
+            Create Bot
+          </v-btn>
           <v-list>
             <template v-for="bot in bots">
               <v-list-item :key="bot.id + '-list-item'">
@@ -34,9 +36,9 @@
             </template>
           </v-list>
           <job-start-dialog
+            v-if="showJobStartDialog"
             v-model="showJobStartDialog"
             :bot="jobStartDialogBot"
-            v-if="showJobStartDialog"
           ></job-start-dialog>
           <create-bot-dialog
             v-model="showCreateBotDialog"

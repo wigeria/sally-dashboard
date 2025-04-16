@@ -16,7 +16,8 @@ export default {
         name: 'jobs',
         url: process.env.BASE_URL
       }]
-    }
+    },
+    vncWsHost: process.env.BASE_VNC_WS_HOST,
   },
 
   // Global page headers (https://go.nuxtjs.dev/config-head)
