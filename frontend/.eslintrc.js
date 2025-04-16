@@ -20,5 +20,7 @@ module.exports = {
     'vue/name-property-casing': 'off',
     'vue/component-name-in-template-casing': 'off',
     'vue/html-self-closing': 'off',
+    'semi': 'off',
+    'comma-dangle': 'off',
   },
 }

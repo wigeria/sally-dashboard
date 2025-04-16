@@ -31,8 +31,6 @@ def run_websockify(websockify_port, rfb_port):
     )
     websockify_server.start_server()
 
-# os.environ["MOZ_HEADLESS"] = "1"
-
 
 def emit_job_message(socket, message):
     """ General handler for emitting any messages to the socket """

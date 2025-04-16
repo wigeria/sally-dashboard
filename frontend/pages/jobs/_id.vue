@@ -14,7 +14,7 @@
     </v-card-title>
 
     <v-card-text>
-      <div id="vnc-container" ref="vncContainer"></div>
+
       <v-expansion-panels
         multiple
         value="true"
@@ -36,6 +36,26 @@
             <pre>{{ job.logs }}</pre>
           </v-expansion-panel-content>
         </v-expansion-panel>
+        <v-expansion-panel>
+          <v-expansion-panel-header>
+            Remote Display
+          </v-expansion-panel-header>
+          <v-expansion-panel-content>
+            <v-btn
+              @click="initVNC"
+              :disabled="!vncAllowed"
+            >
+              Start VNC
+            </v-btn>
+            <v-btn
+              @click="requestVncFullScreen"
+              :disabled="!vncActive"
+            >
+              Fullscreen
+            </v-btn>
+            <div id="vnc-container" ref="vncContainer"></div>
+          </v-expansion-panel-content>
+        </v-expansion-panel>
       </v-expansion-panels>
     </v-card-text>
   </v-card>
@@ -49,7 +69,14 @@ export default {
   data () {
     return {
       job: null,
-      rfb: null
+      rfb: null,
+      vncActive: false,
+    }
+  },
+  computed: {
+    vncAllowed () {
+      // Only allow VNC if the job exists, has a VNC port assigned, and is unfinished
+      return this.job !== null && this.job.vnc_ws_proxy_port && this.job.finish_time === null
     }
   },
   methods: {
@@ -77,29 +104,43 @@ export default {
     },
     initVNC () {
       try {
-        const container = document.getElementById('vnc-container')
-        console.log({ ref: this.$refs, container })
         const websocketPort = this.job.vnc_ws_proxy_port
-        console.log(this.$config, process.env)
         const websocketHost = this.$config.vncWsHost
-        this.rfb = new RFB(this.$refs.vncContainer, `ws://${websocketHost}:${websocketPort}`, {
-          // TODO: get Password from environment
-          credentials: { password: '12345678' }
+        this.rfb = new RFB(this.$refs.vncContainer, `ws://${websocketHost}:${websocketPort}`, {})
+
+        this.rfb.addEventListener('credentialsrequired', (e) => {
+          const password = prompt('VNC Password required:')
+          this.rfb.sendCredentials({ password })
         })
 
         this.rfb.addEventListener('connect', () => {
           console.log('Connected to VNC')
+          this.vncActive = true;
         })
 
         this.rfb.addEventListener('disconnect', () => {
           console.log('Disconnected from VNC')
+          this.vncActive = false;
         })
 
         this.rfb.addEventListener('error', (error) => {
           console.error('VNC Error:', error)
+          this.vncActive = false;
         })
       } catch (error) {
         console.error('Failed to initialize VNC:', error)
+      }
+    },
+    requestVncFullScreen () {
+      const container = this.$refs.vncContainer
+      if (container.requestFullscreen) {
+        container.requestFullscreen()
+      } else if (container.mozRequestFullScreen) {
+        container.mozRequestFullScreen()
+      } else if (container.webkitRequestFullscreen) {
+        container.webkitRequestFullscreen()
+      } else if (container.msRequestFullscreen) {
+        container.msRequestFullscreen()
       }
     }
   },
@@ -110,18 +151,6 @@ export default {
     }
     this.getJobDetails()
     this.setSocketHandler()
-  },
-  mounted () {
-    const checkJob = setInterval(() => {
-      // Only initializing VNC if the job exists, has a VNC port assigned, and is unfinished
-      if (this.job !== null && this.job.vnc_ws_proxy_port && this.job.finish_time === null) {
-        this.initVNC()
-        clearInterval(checkJob)
-      } else if (this.job !== null && this.job.finish_time !== null) {
-        // Clearing the interval if the job is already finished
-        clearInterval(checkJob)
-      }
-    }, 100)
   },
   beforeDestroy () {
     this.$nuxt.$off('job_update_notification')
