@@ -1,13 +1,20 @@
 """ Package containing the API endpoints for the dashboard """
 
 from flask import Blueprint
-from flask_restful import Api
+from flask_restx import Api
 from flask_marshmallow import Marshmallow
 from flask_socketio import SocketIO
 import os
 
 
-api = Api()
+api_authorizations = {
+    'apikey': {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'Authorization'
+    }
+}
+api = Api(authorizations=api_authorizations, security='apikey')
 ma = Marshmallow()
 api_bprint = Blueprint("api", __name__)
 

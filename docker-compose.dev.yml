@@ -10,7 +10,7 @@ services:
     build:
       context: .
       dockerfile: ./dockerfiles/Dockerfile.backend
-    command: /scripts/run_backend.sh
+    command: /scripts/run_backend_dev.sh
     volumes:
       - ./backend:/code/backend
       - ./docs:/code/docs
