@@ -11,7 +11,7 @@ from backend.database.models import Bot, User, Job
 from backend.utils import bot_utils
 from datetime import datetime
 from flask import request, jsonify, make_response, escape
-from flask_restful import Resource, reqparse
+from flask_restx import Resource, reqparse
 import json
 from marshmallow import ValidationError
 import selenium_yaml
@@ -25,10 +25,13 @@ import werkzeug
 class TestResource(Resource):
     def get(self):
         return {'status': 'Running'}
-api.add_resource(TestResource, '/')
+api.add_resource(TestResource, '/status/')
 
 
-@api.doc(api_docs.login.DOCS)
+@api.doc(params=api_docs.LOGIN_DOCS["params"])
+@api.response(200, 'Success', api_docs.LOGIN_DOCS["responses"][200])
+@api.response(400, 'Bad Request', api_docs.LOGIN_DOCS["responses"][400])
+@api.response(401, 'Unauthorized', api_docs.LOGIN_DOCS["responses"][401])
 class LoginResource(Resource):
     """ Endpoint for validating user credentials and generating a JWT Token """
     def post(self):
@@ -68,6 +71,19 @@ class BotsListCreateResource(Resource, ListResourceMixin):
     serializer_class = BotsSchema
     method_decorators = [is_authenticated]
 
+    @api.doc(params=api_docs.BOTS_LIST_CREATE_DOCS['post']['params'])
+    @api.response(201, 'Created', api_docs.BOTS_LIST_CREATE_DOCS['post']['responses'][201])
+    @api.response(400, 'Bad Request', api_docs.BOTS_LIST_CREATE_DOCS['post']['responses'][400])
+    @api.response(401, 'Unauthorized', api_docs.BOTS_LIST_CREATE_DOCS['post']['responses'][401])
+    @api.expect(
+        api.parser()
+            .add_argument(
+                'file',
+                type=werkzeug.datastructures.FileStorage,
+                location='files',
+                required=True,
+            )
+            .add_argument('name', type=str, location='form', required=True))
     def post(self, user=None):
         """ Creates a Bot instance by first validating the provided file
             and then uploading it to S3
@@ -100,6 +116,13 @@ class BotsListCreateResource(Resource, ListResourceMixin):
             "id": str(bot.id),
             "name": bot.name
         }), 201)
+
+    @api.doc(params=api_docs.BOTS_LIST_CREATE_DOCS['get']['params'])
+    @api.response(200, 'Success', api_docs.BOTS_LIST_CREATE_DOCS['get']['responses'][200])
+    @api.response(401, 'Unauthorized', api_docs.BOTS_LIST_CREATE_DOCS['get']['responses'][401])
+    def get(*args, **kwargs):
+        return super().get(*args, **kwargs)
+
 api.add_resource(BotsListCreateResource, "/bots/")
 
 

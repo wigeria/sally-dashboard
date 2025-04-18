@@ -1,7 +1,7 @@
 """ Package containing the API endpoints for the dashboard """
 
 from flask import Blueprint
-from flask_restful import Api
+from flask_restx import Api
 from flask_marshmallow import Marshmallow
 from flask_socketio import SocketIO
 import os
