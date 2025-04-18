@@ -48,7 +48,7 @@ class BotsDetailSchema(ma.SQLAlchemyAutoSchema):
 
     def get_bot_content(self, instance):
         """ Returns the content of the bot's YAML file from S3 """
-        return self._get_bot_yaml(instance)
+        return self._get_bot_yaml(instance).decode()
 
     class Meta:
         model = Bot

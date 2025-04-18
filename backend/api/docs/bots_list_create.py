@@ -6,7 +6,7 @@ from flask_restx import fields
 ERROR_MESSAGE = api.api.model('bots_ErrorMessage', {
     'errors': fields.String(example='Missing file/name')
 })
-VALIDATION_ERROR = api.api.model('bots_ValidationError', {
+VALIDATION_ERROR = api.api.model('bots_list_ValidationError', {
     'errors': fields.Raw(example={
         'assertion': 'Invalid bot configuration'
     })

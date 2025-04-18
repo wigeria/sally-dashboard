@@ -7,7 +7,14 @@ from flask_socketio import SocketIO
 import os
 
 
-api = Api()
+api_authorizations = {
+    'apikey': {
+        'type': 'apiKey',
+        'in': 'header',
+        'name': 'Authorization'
+    }
+}
+api = Api(authorizations=api_authorizations, security='apikey')
 ma = Marshmallow()
 api_bprint = Blueprint("api", __name__)
 

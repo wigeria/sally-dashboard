@@ -21,14 +21,15 @@ from tasks import jobs
 import werkzeug
 
 
-@api.doc()
+@api.doc(security=None)
 class TestResource(Resource):
     def get(self):
         return {'status': 'Running'}
 api.add_resource(TestResource, '/status/')
 
 
-@api.doc(params=api_docs.LOGIN_DOCS["params"])
+@api.doc(params=api_docs.LOGIN_DOCS["params"], security=None)
+@api.expect(api_docs.LOGIN_DOCS['request_model'])
 @api.response(200, 'Success', api_docs.LOGIN_DOCS["responses"][200])
 @api.response(400, 'Bad Request', api_docs.LOGIN_DOCS["responses"][400])
 @api.response(401, 'Unauthorized', api_docs.LOGIN_DOCS["responses"][401])
@@ -120,7 +121,7 @@ class BotsListCreateResource(Resource, ListResourceMixin):
     @api.doc(params=api_docs.BOTS_LIST_CREATE_DOCS['get']['params'])
     @api.response(200, 'Success', api_docs.BOTS_LIST_CREATE_DOCS['get']['responses'][200])
     @api.response(401, 'Unauthorized', api_docs.BOTS_LIST_CREATE_DOCS['get']['responses'][401])
-    def get(*args, **kwargs):
+    def get(self, *args, **kwargs):
         return super().get(*args, **kwargs)
 
 api.add_resource(BotsListCreateResource, "/bots/")
@@ -130,6 +131,10 @@ class BotsRetrieveDeleteResource(Resource):
     """ Resource implementing endpoints for retreiving/deleting Bots """
     method_decorators = [is_authenticated]
 
+    @api.doc(params=api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['get']['params'])
+    @api.response(200, 'Success', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['get']['responses'][200])
+    @api.response(404, 'Not Found', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['get']['responses'][404])
+    @api.response(401, 'Unauthorized', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['get']['responses'][401])
     def get(self, bot_id, user=None):
         """ Returns details for the given Bot + it's Jinja fields
             from the YAML
@@ -143,6 +148,10 @@ class BotsRetrieveDeleteResource(Resource):
         schema = BotsDetailSchema()
         return make_response(jsonify(schema.dump(bot)))
 
+    @api.doc(params=api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['delete']['params'])
+    @api.response(200, 'Success', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['delete']['responses'][200])
+    @api.response(404, 'Not Found', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['delete']['responses'][404])
+    @api.response(401, 'Unauthorized', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['delete']['responses'][401])
     def delete(self, bot_id, user=None):
         """ Deletes the given Bot as well as it's file from S3 """
         bot = Bot.query.filter(Bot.id == bot_id).first()
@@ -158,6 +167,19 @@ class BotsRetrieveDeleteResource(Resource):
             "message": "Deleted"
         }), 200)
 
+    @api.doc(params=api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['patch']['params'])
+    @api.response(200, 'Success', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['patch']['responses'][200])
+    @api.response(400, 'Bad Request', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['patch']['responses'][400])
+    @api.response(404, 'Not Found', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['patch']['responses'][404])
+    @api.response(401, 'Unauthorized', api_docs.BOTS_RETRIEVE_UPDATE_DELETE_DOCS['patch']['responses'][401])
+    @api.expect(api.parser()
+        .add_argument(
+            'file',
+            type=werkzeug.datastructures.FileStorage,
+            location='files',
+            required=False,
+        )
+        .add_argument('name', type=str, location='form', required=False))
     def patch(self, bot_id, user=None):
         """ Updates the Bot with either a new file and/or name """
         bot = Bot.query.filter(Bot.id == bot_id).first()
@@ -207,6 +229,12 @@ class JobsListCreateResource(ListResourceMixin, Resource):
     model_class = Job
     serializer_class = JobsSchema
 
+    @api.doc(params=api_docs.JOBS_LIST_CREATE_DOCS['get']['params'])
+    @api.response(200, 'Success', api_docs.JOBS_LIST_CREATE_DOCS['get']['responses'][200])
+    @api.response(401, 'Unauthorized', api_docs.JOBS_LIST_CREATE_DOCS['get']['responses'][401])
+    def get(self, *args, **kwargs):
+        return super().get(*args, **kwargs)
+
     def get_queryset(self):
         """ Overwritten to add support for filtering by status """
         filters = []
@@ -224,6 +252,12 @@ class JobsListCreateResource(ListResourceMixin, Resource):
             .options(joinedload(Job.bot)) \
             .order_by(self.model_class.start_time.desc())
 
+    @api.doc(params=api_docs.JOBS_LIST_CREATE_DOCS['post']['params'])
+    @api.expect(api_docs.JOBS_LIST_CREATE_DOCS['post']['request_model'])
+    @api.response(201, 'Created', api_docs.JOBS_LIST_CREATE_DOCS['post']['responses'][201])
+    @api.response(400, 'Bad Request', api_docs.JOBS_LIST_CREATE_DOCS['post']['responses'][400])
+    @api.response(401, 'Unauthorized', api_docs.JOBS_LIST_CREATE_DOCS['post']['responses'][401])
+    @api.response(404, 'Not Found', api_docs.JOBS_LIST_CREATE_DOCS['post']['responses'][404])
     def post(self, user=None):
         """ Creates and starts a new job against a given bot """
         data = request.get_json()
@@ -266,6 +300,10 @@ class JobsDetailResource(Resource):
     method_decorators = [is_authenticated]
     serializer_class = JobsSchema
 
+    @api.doc(params=api_docs.JOBS_DETAIL_DOCS['get']['params'])
+    @api.response(200, 'Success', api_docs.JOBS_DETAIL_DOCS['get']['responses'][200])
+    @api.response(404, 'Not Found', api_docs.JOBS_DETAIL_DOCS['get']['responses'][404])
+    @api.response(401, 'Unauthorized', api_docs.JOBS_DETAIL_DOCS['get']['responses'][401])
     def get(self, job_id, user=None):
         """ Returns details for the given job """
         job = Job.query.filter(Job.id == job_id).first()

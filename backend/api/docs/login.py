@@ -20,6 +20,10 @@ LOGIN_RESPONSE = api.api.model('login_LoginResponse', {
     'token': fields.String(example='eyJ0eXAiOiJKV1QiLCJhbGc...'),
     'user': fields.Nested(USER)
 })
+LOGIN_REQUEST = api.api.model('login_LoginRequest', {
+    'email': fields.String(example='user@gmail.com'),
+    'password': fields.String(example="testpassword", format="password")
+})
 
 
 DOCS = {
@@ -28,20 +32,6 @@ DOCS = {
         400: VALIDATION_ERRORS,
         401: ERROR_MESSAGE,
     },
-    "params": {
-        'email': {
-            'in': 'body',
-            'description': 'User email address',
-            'required': True,
-            'type': 'string',
-            'example': 'user@example.com'
-        },
-        'password': {
-            'in': 'body',
-            'description': 'User password',
-            'required': True,
-            'type': 'string',
-            'example': 'password123'
-        }
-    },
+    "params": {},
+    'request_model': LOGIN_REQUEST,
 }
