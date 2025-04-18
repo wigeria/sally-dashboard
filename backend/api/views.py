@@ -5,6 +5,7 @@ from .decorators import is_authenticated
 from .mixins import ListResourceMixin, CreateResourceMixin
 from .request_schemas import UserLoginRequestSchema
 from .serializers import BotsSchema, JobsSchema, BotsDetailSchema
+from . import docs as api_docs
 from backend.database import db
 from backend.database.models import Bot, User, Job
 from backend.utils import bot_utils
@@ -20,12 +21,14 @@ from tasks import jobs
 import werkzeug
 
 
+@api.doc()
 class TestResource(Resource):
     def get(self):
         return {'status': 'Running'}
 api.add_resource(TestResource, '/')
 
 
+@api.doc(api_docs.login.DOCS)
 class LoginResource(Resource):
     """ Endpoint for validating user credentials and generating a JWT Token """
     def post(self):
@@ -85,7 +88,6 @@ class BotsListCreateResource(Resource, ListResourceMixin):
                 "errors": err.error
             }), 400)
         except AssertionError as err:
-            raise
             return make_response(jsonify({
                 "errors": {"assertion": err.args[0]}
             }), 400)
@@ -101,7 +103,7 @@ class BotsListCreateResource(Resource, ListResourceMixin):
 api.add_resource(BotsListCreateResource, "/bots/")
 
 
-class BotsRetreiveDeleteResource(Resource):
+class BotsRetrieveDeleteResource(Resource):
     """ Resource implementing endpoints for retreiving/deleting Bots """
     method_decorators = [is_authenticated]
 
@@ -118,7 +120,6 @@ class BotsRetreiveDeleteResource(Resource):
         schema = BotsDetailSchema()
         return make_response(jsonify(schema.dump(bot)))
 
-
     def delete(self, bot_id, user=None):
         """ Deletes the given Bot as well as it's file from S3 """
         bot = Bot.query.filter(Bot.id == bot_id).first()
@@ -133,7 +134,48 @@ class BotsRetreiveDeleteResource(Resource):
         return make_response(jsonify({
             "message": "Deleted"
         }), 200)
-api.add_resource(BotsRetreiveDeleteResource, "/bots/<string:bot_id>/")
+
+    def patch(self, bot_id, user=None):
+        """ Updates the Bot with either a new file and/or name """
+        bot = Bot.query.filter(Bot.id == bot_id).first()
+        if not bot:
+            return make_response(jsonify({
+                "error": "Does Not Exist"
+            }), 404)
+
+        if "file" not in request.files and "name" not in request.form:
+            return make_response(jsonify({
+                "errors": "Must provide file and/or name"
+            }), 400)
+
+        if "name" in request.form:
+            if len(request.form["name"]) > 80 or len(request.form["name"]) < 1:
+                return make_response(jsonify({
+                    "errors": "``name`` <= 80"
+                }), 400)
+            bot.name = escape(request.form["name"])
+
+        if "file" in request.files:
+            yaml_content = request.files["file"].read()
+            try:
+                bot_utils.parse_yaml_bot(yaml_content)
+            except selenium_yaml.exceptions.ValidationError as err:
+                return make_response(jsonify({
+                    "errors": err.error
+                }), 400)
+            except AssertionError as err:
+                return make_response(jsonify({
+                    "errors": {"assertion": err.args[0]}
+                }), 400)
+            bot_utils.upload_bot(yaml_content, bot.s3_path)
+
+        db.session.commit()
+        return make_response(jsonify({
+            "id": str(bot.id),
+            "name": bot.name,
+        }), 200)
+
+api.add_resource(BotsRetrieveDeleteResource, "/bots/<string:bot_id>/")
 
 
 class JobsListCreateResource(ListResourceMixin, Resource):
